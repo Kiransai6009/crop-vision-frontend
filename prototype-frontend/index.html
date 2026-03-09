@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CropVision – Yield Prediction Dashboard</title>
+    <meta name="description"
+        content="AI-powered smart agriculture dashboard with live satellite imagery, weather data, and ML-based crop yield prediction for precision farming." />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet" />
+
+    <!-- Libraries -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+    <style>
+        /* ─── RESET & TOKENS ─────────────────────────────────────────────── */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #080e1a;
+            --bg2: #0d1627;
+            --bg3: #111e35;
+            --card: rgba(17, 30, 53, 0.85);
+            --border: rgba(56, 189, 109, 0.18);
+            --border2: rgba(56, 189, 109, 0.35);
+            --green: #38bd6d;
+            --green-dim: #1a7a3f;
+            --green-glow: rgba(56, 189, 109, 0.25);
+            --cyan: #22d3ee;
+            --gold: #fbbf24;
+            --red: #f87171;
+            --orange: #fb923c;
+            --purple: #a78bfa;
+            --text: #e2e8f0;
+            --text2: #94a3b8;
+            --text3: #64748b;
+            --radius: 14px;
+            --radius-sm: 8px;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+            --shadow-g: 0 0 30px rgba(56, 189, 109, 0.15);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ─── ANIMATED BACKGROUND ────────────────────────────────────────── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 80% 60% at 10% 10%, rgba(56, 189, 109, 0.07) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 80% at 90% 80%, rgba(34, 211, 238, 0.05) 0%, transparent 60%),
+                radial-gradient(ellipse 70% 50% at 50% 50%, rgba(167, 139, 250, 0.03) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ─── HEADER ─────────────────────────────────────────────────────── */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(8, 14, 26, 0.92);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 68px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--green), #22c55e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 16px var(--green-glow);
+        }
+
+        .logo-text h1 {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.3px;
+        }
+
+        .logo-text span {
+            font-size: 11px;
+            color: var(--text2);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .header-status {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(56, 189, 109, 0.12);
+            border: 1px solid var(--border2);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--green);
+            letter-spacing: 0.5px;
+        }
+
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--green);
+            animation: pulse-dot 2s infinite;
+        }
+
+        @keyframes pulse-dot {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: 0.5;
+                transform: scale(1.4);
+            }
+        }
+
+        #last-updated {
+            font-size: 11px;
+            color: var(--text3);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ─── MAIN LAYOUT ────────────────────────────────────────────────── */
+        main {
+            position: relative;
+            z-index: 1;
+            padding: 24px 28px 40px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* ─── LOCATION BAR ───────────────────────────────────────────────── */
+        .location-bar {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 24px;
+            backdrop-filter: blur(16px);
+            box-shadow: var(--shadow);
+        }
+
+        .location-bar label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .sel-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+            min-width: 160px;
+        }
+
+        .sel-group .sel-icon {
+            font-size: 16px;
+        }
+
+        select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border2);
+            border-radius: var(--radius-sm);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 9px 34px 9px 12px;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            flex: 1;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--green);
+            box-shadow: 0 0 0 3px var(--green-glow);
+        }
+
+        select option {
+            background: var(--bg2);
+        }
+
+        .arrow {
+            color: var(--text3);
+            font-size: 16px;
+        }
+
+        .btn-refresh {
+            background: linear-gradient(135deg, var(--green), #22c55e);
+            border: none;
+            border-radius: var(--radius-sm);
+            color: #000;
+            font-weight: 700;
+            font-size: 13px;
+            padding: 10px 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 16px var(--green-glow);
+            white-space: nowrap;
+        }
+
+        .btn-refresh:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px var(--green-glow);
+        }
+
+        .btn-refresh:active {
+            transform: translateY(0);
+        }
+
+        .btn-refresh.loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .location-crumb {
+            font-size: 12px;
+            color: var(--green);
+            font-weight: 600;
+            background: rgba(56, 189, 109, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border2);
+            white-space: nowrap;
+        }
+
+        /* ─── GRID ───────────────────────────────────────────────────────── */
+        .grid-main {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            grid-template-rows: auto auto;
+            gap: 20px;
+        }
+
+        .col-left {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .col-right {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* ─── METRIC CARDS ───────────────────────────────────────────────── */
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+        }
+
+        .metric-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px 16px;
+            backdrop-filter: blur(16px);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+            cursor: default;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            background: linear-gradient(135deg, var(--green-glow), transparent);
+            transition: opacity 0.3s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--border2);
+            box-shadow: var(--shadow-g);
+        }
+
+        .metric-card:hover::before {
+            opacity: 1;
+        }
+
+        .mc-icon {
+            font-size: 22px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .mc-label {
+            font-size: 10px;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .mc-value {
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .mc-unit {
+            font-size: 11px;
+            color: var(--text2);
+            margin-top: 2px;
+        }
+
+        .mc-bar {
+            height: 3px;
+            border-radius: 2px;
+            margin-top: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+
+        .mc-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 1s ease;
+        }
+
+        /* ─── CARD ───────────────────────────────────────────────────────── */
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            backdrop-filter: blur(16px);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card-title .icon {
+            font-size: 16px;
+        }
+
+        .card-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        .badge-green {
+            background: rgba(56, 189, 109, 0.15);
+            color: var(--green);
+            border: 1px solid var(--border2);
+        }
+
+        .badge-cyan {
+            background: rgba(34, 211, 238, 0.12);
+            color: var(--cyan);
+            border: 1px solid rgba(34, 211, 238, 0.25);
+        }
+
+        .badge-gold {
+            background: rgba(251, 191, 36, 0.12);
+            color: var(--gold);
+            border: 1px solid rgba(251, 191, 36, 0.25);
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* ─── MAP ────────────────────────────────────────────────────────── */
+        #map {
+            height: 340px;
+            border-radius: 0 0 var(--radius) var(--radius);
+            z-index: 1;
+        }
+
+        .map-tip {
+            font-size: 11px;
+            color: var(--text2);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ─── WEATHER PANEL ──────────────────────────────────────────────── */
+        .weather-main {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .weather-icon {
+            font-size: 48px;
+            line-height: 1;
+        }
+
+        .weather-temp {
+            font-size: 48px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1;
+        }
+
+        .weather-temp sup {
+            font-size: 20px;
+            vertical-align: top;
+            margin-top: 6px;
+        }
+
+        .weather-desc {
+            color: var(--text2);
+            font-size: 13px;
+            margin-top: 2px;
+        }
+
+        .weather-source {
+            font-size: 10px;
+            color: var(--text3);
+            margin-top: 4px;
+        }
+
+        .weather-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1px;
+            background: var(--border);
+        }
+
+        .weather-stat {
+            background: var(--card);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .ws-icon {
+            font-size: 18px;
+        }
+
+        .ws-label {
+            font-size: 10px;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .ws-val {
+            font-size: 16px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ─── NDVI GAUGE ─────────────────────────────────────────────────── */
+        .ndvi-gauge-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px 20px 16px;
+        }
+
+        .ndvi-arc {
+            position: relative;
+            width: 180px;
+            height: 95px;
+            margin-bottom: 8px;
+        }
+
+        .ndvi-arc svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        .ndvi-num {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .ndvi-label {
+            font-size: 11px;
+            color: var(--text2);
+            text-align: center;
+        }
+
+        .health-badge-big {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: var(--radius-sm);
+            padding: 10px 20px;
+            margin-top: 12px;
+            width: 100%;
+            border: 1px solid var(--border);
+        }
+
+        .health-status {
+            font-size: 16px;
+            font-weight: 800;
+        }
+
+        .health-score {
+            font-size: 11px;
+            color: var(--text2);
+        }
+
+        /* ─── CHART CONTAINERS ───────────────────────────────────────────── */
+        .chart-wrap {
+            position: relative;
+            padding: 16px 20px 12px;
+            height: 220px;
+        }
+
+        /* ─── YIELD PREDICTION BANNER ────────────────────────────────────── */
+        .yield-banner {
+            background: linear-gradient(135deg, rgba(56, 189, 109, 0.12), rgba(34, 211, 238, 0.08));
+            border: 1px solid var(--border2);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .yield-main {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .yield-label {
+            font-size: 11px;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .yield-val {
+            font-size: 52px;
+            font-weight: 900;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--green);
+            line-height: 1;
+        }
+
+        .yield-unit {
+            font-size: 14px;
+            color: var(--text2);
+        }
+
+        .yield-crop {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .yield-crop-name {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .yield-conf {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .conf-bar {
+            flex: 1;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            max-width: 180px;
+        }
+
+        .conf-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, var(--green), var(--cyan));
+            transition: width 1.2s ease;
+        }
+
+        .conf-pct {
+            font-size: 13px;
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .conf-txt {
+            font-size: 11px;
+            color: var(--text2);
+        }
+
+        /* ─── LOADING OVERLAY ────────────────────────────────────────────── */
+        #loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 999;
+            background: rgba(8, 14, 26, 0.88);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            backdrop-filter: blur(8px);
+            transition: opacity 0.4s;
+        }
+
+        #loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            border: 4px solid rgba(56, 189, 109, 0.2);
+            border-top-color: var(--green);
+            animation: spin 0.9s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            color: var(--text2);
+            font-size: 14px;
+        }
+
+        /* ─── ERROR TOAST ────────────────────────────────────────────────── */
+        #error-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 900;
+            background: rgba(248, 113, 113, 0.12);
+            border: 1px solid rgba(248, 113, 113, 0.4);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            font-size: 13px;
+            color: var(--red);
+            display: none;
+            max-width: 320px;
+        }
+
+        /* ─── INFO ROW ───────────────────────────────────────────────────── */
+        .info-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .info-chip {
+            font-size: 11px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            color: var(--text2);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .info-chip b {
+            color: var(--text);
+        }
+
+        /* ─── RESPONSIVE ─────────────────────────────────────────────────── */
+        @media (max-width: 1200px) {
+            .grid-main {
+                grid-template-columns: 1fr;
+            }
+
+            .col-right {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .col-right .card {
+                flex: 1;
+                min-width: 280px;
+            }
+
+            .metrics-row {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            main {
+                padding: 16px;
+            }
+
+            header {
+                padding: 0 16px;
+            }
+
+            .metrics-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .location-bar {
+                gap: 10px;
+            }
+
+            .yield-val {
+                font-size: 38px;
+            }
+        }
+
+        /* ─── SCROLL-IN ANIMATION ────────────────────────────────────────── */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeUp 0.5s ease forwards;
+        }
+
+        @keyframes fadeUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .delay-1 {
+            animation-delay: 0.1s;
+        }
+
+        .delay-2 {
+            animation-delay: 0.2s;
+        }
+
+        .delay-3 {
+            animation-delay: 0.3s;
+        }
+
+        .delay-4 {
+            animation-delay: 0.4s;
+        }
+
+        /* counter animation */
+        .count-animate {
+            transition: all 0.8s ease;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text">Fetching satellite & weather data…</div>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="error-toast"></div>
+
+    <!-- ─── HEADER ──────────────────────────────────────────────────────── -->
+    <header>
+        <div class="logo">
+            <div class="logo-icon">🌾</div>
+            <div class="logo-text">
+                <h1>CropVision</h1>
+                <span>Yield Prediction &amp; Satellite Intelligence</span>
+            </div>
+        </div>
+        <div class="header-status">
+            <div class="live-badge">
+                <div class="live-dot"></div> LIVE DATA
+            </div>
+            <span id="last-updated">—</span>
+        </div>
+    </header>
+
+    <!-- ─── MAIN ────────────────────────────────────────────────────────── -->
+    <main>
+
+        <!-- Location Bar -->
+        <div class="location-bar fade-up">
+            <label>Select Location</label>
+
+            <div class="sel-group">
+                <span class="sel-icon">🌏</span>
+                <select id="sel-country" onchange="onCountryChange()">
+                    <option value="">— Country —</option>
+                </select>
+            </div>
+
+            <span class="arrow">›</span>
+
+            <div class="sel-group">
+                <span class="sel-icon">🗺️</span>
+                <select id="sel-state" onchange="onStateChange()" disabled>
+                    <option value="">— State —</option>
+                </select>
+            </div>
+
+            <span class="arrow">›</span>
+
+            <div class="sel-group">
+                <span class="sel-icon">📍</span>
+                <select id="sel-district" onchange="onDistrictChange()" disabled>
+                    <option value="">— District —</option>
+                </select>
+            </div>
+
+            <span id="location-crumb" class="location-crumb" style="display:none"></span>
+            <button class="btn-refresh" id="btn-refresh" onclick="refreshDashboard()">
+                <span>⟳</span> Refresh
+            </button>
+        </div>
+
+        <!-- Info Row (filled dynamically) -->
+        <div class="info-row fade-up delay-1" id="info-row" style="display:none"></div>
+
+        <!-- Yield Banner -->
+        <div class="yield-banner fade-up delay-2" id="yield-banner" style="display:none">
+            <div class="yield-main">
+                <div class="yield-label">Predicted Yield</div>
+                <div class="yield-val" id="yb-val">—</div>
+                <div class="yield-unit">tons / hectare</div>
+            </div>
+            <div class="yield-crop">
+                <div style="font-size:11px;color:var(--text2);text-transform:uppercase;letter-spacing:1px">Primary Crop
+                </div>
+                <div class="yield-crop-name" id="yb-crop">—</div>
+                <div class="yield-conf">
+                    <div class="conf-bar">
+                        <div class="conf-fill" id="conf-fill" style="width:0%"></div>
+                    </div>
+                    <div class="conf-pct" id="conf-pct">0%</div>
+                </div>
+                <div class="conf-txt">ML Confidence Score (Random Forest + Gradient Boosting)</div>
+            </div>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="metrics-row fade-up delay-2" id="metrics-row" style="display:none; margin-top: 20px;">
+            <!-- Yield -->
+            <div class="metric-card">
+                <div class="mc-icon" style="background:rgba(56,189,109,0.12);">🌾</div>
+                <div class="mc-label">Predicted Yield</div>
+                <div class="mc-value" id="mc-yield" style="color:var(--green)">—</div>
+                <div class="mc-unit">tons / hectare</div>
+                <div class="mc-bar">
+                    <div class="mc-bar-fill" id="mc-yield-bar" style="background:var(--green);width:0%"></div>
+                </div>
+            </div>
+            <!-- NDVI -->
+            <div class="metric-card">
+                <div class="mc-icon" style="background:rgba(34,211,238,0.12);">🛰️</div>
+                <div class="mc-label">NDVI Index</div>
+                <div class="mc-value" id="mc-ndvi" style="color:var(--cyan)">—</div>
+                <div class="mc-unit">Vegetation Index</div>
+                <div class="mc-bar">
+                    <div class="mc-bar-fill" id="mc-ndvi-bar" style="background:var(--cyan);width:0%"></div>
+                </div>
+            </div>
+            <!-- Temperature -->
+            <div class="metric-card">
+                <div class="mc-icon" style="background:rgba(251,191,36,0.12);">🌡️</div>
+                <div class="mc-label">Temperature</div>
+                <div class="mc-value" id="mc-temp" style="color:var(--gold)">—</div>
+                <div class="mc-unit">°C (feels <span id="mc-feels">—</span>)</div>
+                <div class="mc-bar">
+                    <div class="mc-bar-fill" id="mc-temp-bar" style="background:var(--gold);width:0%"></div>
+                </div>
+            </div>
+            <!-- Rainfall -->
+            <div class="metric-card">
+                <div class="mc-icon" style="background:rgba(167,139,250,0.12);">🌧️</div>
+                <div class="mc-label">Rainfall</div>
+                <div class="mc-value" id="mc-rain" style="color:var(--purple)">—</div>
+                <div class="mc-unit">mm / month</div>
+                <div class="mc-bar">
+                    <div class="mc-bar-fill" id="mc-rain-bar" style="background:var(--purple);width:0%"></div>
+                </div>
+            </div>
+            <!-- Health -->
+            <div class="metric-card">
+                <div class="mc-icon" style="background:rgba(56,189,109,0.12);" id="mc-health-icon">🌿</div>
+                <div class="mc-label">Crop Health</div>
+                <div class="mc-value" id="mc-health" style="font-size:18px">—</div>
+                <div class="mc-unit">Health Score: <span id="mc-health-score">—</span>/100</div>
+                <div class="mc-bar">
+                    <div class="mc-bar-fill" id="mc-health-bar" style="background:var(--green);width:0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid-main" style="margin-top:20px">
+
+            <!-- LEFT COLUMN -->
+            <div class="col-left">
+
+                <!-- NDVI + Rainfall Charts -->
+                <div class="card fade-up delay-3" id="chart-ndvi-card" style="display:none">
+                    <div class="card-header">
+                        <div class="card-title"><span class="icon">📈</span> Monthly NDVI Trend (Sentinel-2)</div>
+                        <span class="card-badge badge-cyan">12 MONTHS</span>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="chart-ndvi"></canvas>
+                    </div>
+                </div>
+
+                <!-- Yield History -->
+                <div class="card fade-up delay-3" id="chart-yield-card" style="display:none">
+                    <div class="card-header">
+                        <div class="card-title"><span class="icon">📊</span> Yield: Actual vs Predicted</div>
+                        <span class="card-badge badge-green">2020–2025</span>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="chart-yield"></canvas>
+                    </div>
+                </div>
+
+                <!-- Rainfall Chart -->
+                <div class="card fade-up delay-4" id="chart-rain-card" style="display:none">
+                    <div class="card-header">
+                        <div class="card-title"><span class="icon">🌧️</span> Monthly Rainfall Distribution</div>
+                        <span class="card-badge badge-gold">ANNUAL</span>
+                    </div>
+                    <div class="chart-wrap">
+                        <canvas id="chart-rain"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN -->
+            <div class="col-right">
+
+                <!-- Interactive Map -->
+                <div class="card fade-up delay-2">
+                    <div class="card-header">
+                        <div class="card-title"><span class="icon">🗺️</span> Interactive Map</div>
+                        <span class="card-badge badge-green">CLICK TO SELECT</span>
+                    </div>
+                    <div
+                        style="padding:10px 16px 6px; display:flex; align-items:center; justify-content:space-between;">
+                        <span class="map-tip">💡 Click any point to fetch live data for that location</span>
+                    </div>
+                    <div id="map"></div>
+                </div>
+
+                <!-- Weather Card -->
+                <div class="card fade-up delay-3" id="weather-card" style="display:none">
+                    <div class="card-header">
+                        <div class="card-title"><span class="icon">🌤️</span> Live Weather</div>
+                        <span class="card-badge badge-green" id="wx-source-badge">LIVE</span>
+                    </div>
+                    <div class="weather-main">
+                        <div class="weather-icon" id="wx-icon">🌤️</div>
+                        <div>
+                            <div class="weather-temp" id="wx-temp">—<sup>°C</sup></div>
+                            <div class="weather-desc" id="wx-desc">—</div>
+                            <div class="weather-source" id="wx-source"></div>
+                        </div>
+                    </div>
+                    <div class="weather-grid">
+                        <div class="weather-stat">
+                            <div class="ws-icon">💧</div>
+                            <div>
+                                <div class="ws-label">Humidity</div>
+                                <div class="ws-val" id="wx-hum">—%</div>
+                            </div>
+                        </div>
+                        <div class="weather-stat">
+                            <div class="ws-icon">🌧️</div>
+                            <div>
+                                <div class="ws-label">Rainfall</div>
+                                <div class="ws-val" id="wx-rain">— mm</div>
+                            </div>
+                        </div>
+                        <div class="weather-stat">
+                            <div class="ws-icon">💨</div>
+                            <div>
+                                <div class="ws-label">Wind</div>
+                                <div class="ws-val" id="wx-wind">— km/h</div>
+                            </div>
+                        </div>
+                        <div class="weather-stat">
+                            <div class="ws-icon">⏱️</div>
+                            <div>
+                                <div class="ws-label">Pressure</div>
+                                <div class="ws-val" id="wx-pres">— hPa</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- NDVI Gauge -->
+                <div class="card fade-up delay-3" id="ndvi-card" style="display:none">
+                    <div class="card-header">
+                        <div class="card-title"><span class="icon">🛰️</span> Vegetation Index</div>
+                        <span class="card-badge badge-cyan">NDVI</span>
+                    </div>
+                    <div class="ndvi-gauge-wrap">
+                        <div class="ndvi-arc">
+                            <svg viewBox="0 0 180 95">
+                                <!-- Track arc -->
+                                <path d="M 15 90 A 75 75 0 0 1 165 90" fill="none" stroke="rgba(255,255,255,0.08)"
+                                    stroke-width="14" stroke-linecap="round" />
+                                <!-- Value arc -->
+                                <path id="ndvi-arc-path" d="M 15 90 A 75 75 0 0 1 165 90" fill="none"
+                                    stroke="var(--cyan)" stroke-width="14" stroke-linecap="round"
+                                    stroke-dasharray="0 236" style="transition:stroke-dasharray 1.2s ease" />
+                            </svg>
+                            <div class="ndvi-num" id="ndvi-num" style="color:var(--cyan)">—</div>
+                        </div>
+                        <div class="ndvi-label">Normalized Difference Vegetation Index</div>
+                        <div class="health-badge-big">
+                            <div class="health-status" id="health-status">—</div>
+                            <div class="health-score" id="health-score-txt">Crop Health Score: —</div>
+                        </div>
+                    </div>
+                    <!-- Soil moisture -->
+                    <div style="padding:0 20px 16px">
+                        <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">SOIL MOISTURE</div>
+                        <div style="background:rgba(255,255,255,0.06);border-radius:4px;height:8px;overflow:hidden;">
+                            <div id="soil-bar"
+                                style="height:100%;background:linear-gradient(90deg,#60a5fa,var(--cyan));border-radius:4px;width:0%;transition:width 1s ease;">
+                            </div>
+                        </div>
+                        <div style="font-size:12px;color:var(--cyan);margin-top:4px;" id="soil-val">— %</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ─── SCRIPTS ─────────────────────────────────────────────────────── -->
+    <script>
+        /* ══════════════════════════════════════════════════════════════════════
+           CropVision – Frontend Application
+           ══════════════════════════════════════════════════════════════════════ */
+
+        const API_BASE = 'http://localhost:5000/api';
+        let locationData = {};
+        let currentLat = null, currentLon = null;
+        let leafletMap = null, leafletMarker = null;
+        let chartNDVI = null, chartYield = null, chartRain = null;
+        let refreshTimer = null;
+        let currentData = null;
+
+        // ─── CHART DEFAULTS ───────────────────────────────────────────────────
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.plugins.legend.labels.boxWidth = 12;
+        Chart.defaults.plugins.legend.labels.padding = 16;
+
+        const chartDefaults = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false } },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b' } },
+                y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b' } }
+            }
+        };
+
+        // ─── MAP INIT ─────────────────────────────────────────────────────────
+        function initMap() {
+            leafletMap = L.map('map', { zoomControl: true, attributionControl: false }).setView([20, 80], 5);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 18, subdomains: 'abcd'
+            }).addTo(leafletMap);
+
+            L.control.attribution({ prefix: false }).addTo(leafletMap);
+
+            leafletMap.on('click', async (e) => {
+                const { lat, lng } = e.latlng;
+                placeMarker(lat, lng);
+                await fetchDashboardByCoords(lat, lng, `Custom (${lat.toFixed(3)}, ${lng.toFixed(3)})`, 'Mixed');
+            });
+        }
+
+        function placeMarker(lat, lon) {
+            if (leafletMarker) leafletMap.removeLayer(leafletMarker);
+            const icon = L.divIcon({
+                html: `<div style="
+      background:var(--green);color:#000;font-size:16px;
+      width:32px;height:32px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 0 16px rgba(56,189,109,0.6);
+      border:2px solid rgba(255,255,255,0.3);">📍</div>`,
+                className: '', iconSize: [32, 32], iconAnchor: [16, 16]
+            });
+            leafletMarker = L.marker([lat, lon], { icon }).addTo(leafletMap);
+        }
+
+        // ─── LOCATION SELECTORS ───────────────────────────────────────────────
+        async function loadLocations() {
+            try {
+                const resp = await fetch(`${API_BASE}/locations`);
+                locationData = await resp.json();
+                const sel = document.getElementById('sel-country');
+                sel.innerHTML = '<option value="">— Country —</option>';
+                Object.keys(locationData).forEach(c => {
+                    const o = document.createElement('option'); o.value = c; o.textContent = c;
+                    sel.appendChild(o);
+                });
+                // Auto-select India
+                sel.value = 'India'; onCountryChange();
+            } catch (e) {
+                showError('Cannot connect to backend. Ensure Flask is running on port 5000.');
+            }
+        }
+
+        function onCountryChange() {
+            const country = document.getElementById('sel-country').value;
+            const stSel = document.getElementById('sel-state');
+            const diSel = document.getElementById('sel-district');
+            stSel.innerHTML = '<option value="">— State —</option>';
+            diSel.innerHTML = '<option value="">— District —</option>';
+            stSel.disabled = !country; diSel.disabled = true;
+            if (country && locationData[country]) {
+                Object.keys(locationData[country]).sort().forEach(s => {
+                    const o = document.createElement('option'); o.value = s; o.textContent = s;
+                    stSel.appendChild(o);
+                });
+                stSel.value = 'Andhra Pradesh'; onStateChange();
+            }
+        }
+
+        function onStateChange() {
+            const country = document.getElementById('sel-country').value;
+            const state = document.getElementById('sel-state').value;
+            const diSel = document.getElementById('sel-district');
+            diSel.innerHTML = '<option value="">— District —</option>';
+            diSel.disabled = !state;
+            if (country && state && locationData[country]?.[state]) {
+                locationData[country][state].forEach(d => {
+                    const o = document.createElement('option'); o.value = d.name;
+                    o.dataset.lat = d.lat; o.dataset.lon = d.lon; o.dataset.crop = d.crop;
+                    o.textContent = d.name;
+                    diSel.appendChild(o);
+                });
+                diSel.value = 'Visakhapatnam'; onDistrictChange();
+            }
+        }
+
+        function onDistrictChange() {
+            const diSel = document.getElementById('sel-district');
+            const opt = diSel.selectedOptions[0];
+            if (!opt?.dataset.lat) return;
+            const { lat, lon, crop } = opt.dataset;
+            const name = `${diSel.value}, ${document.getElementById('sel-state').value}`;
+            currentLat = parseFloat(lat); currentLon = parseFloat(lon);
+            placeMarker(currentLat, currentLon);
+            leafletMap.flyTo([currentLat, currentLon], 9, { animate: true, duration: 1.2 });
+            fetchDashboardByCoords(currentLat, currentLon, name, crop);
+        }
+
+        // ─── FETCH & RENDER ───────────────────────────────────────────────────
+        async function fetchDashboardByCoords(lat, lon, name, crop) {
+            showLoading(true);
+            clearTimer();
+            try {
+                const url = `${API_BASE}/dashboard?lat=${lat}&lon=${lon}&name=${encodeURIComponent(name)}&crop=${encodeURIComponent(crop)}`;
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error(await resp.text());
+                const data = await resp.json();
+                currentData = data;
+                renderDashboard(data);
+                updateTimestamp(data.generated_at);
+                scheduleAutoRefresh(lat, lon, name, crop);
+            } catch (e) {
+                showError('Failed to fetch data: ' + e.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function refreshDashboard() {
+            if (currentLat === null) return;
+            const crop = document.getElementById('sel-district').selectedOptions[0]?.dataset.crop || 'Mixed';
+            const name = currentData?.location?.name || 'Selected Location';
+            fetchDashboardByCoords(currentLat, currentLon, name, crop);
+        }
+
+        function scheduleAutoRefresh(lat, lon, name, crop) {
+            clearTimer();
+            refreshTimer = setTimeout(() => fetchDashboardByCoords(lat, lon, name, crop), 12 * 60 * 60 * 1000);
+        }
+
+        function clearTimer() { if (refreshTimer) clearTimeout(refreshTimer); }
+
+        // ─── RENDER DASHBOARD ─────────────────────────────────────────────────
+        function renderDashboard(d) {
+            const { weather, ndvi, yield: yld, health, rainfall_trend, location } = d;
+
+            // Show elements
+            ['yield-banner', 'metrics-row', 'chart-ndvi-card', 'chart-yield-card',
+                'chart-rain-card', 'weather-card', 'ndvi-card', 'info-row'].forEach(id => {
+                    document.getElementById(id).style.display = '';
+                });
+
+            // Location crumb
+            const crumb = document.getElementById('location-crumb');
+            crumb.style.display = ''; crumb.textContent = `📍 ${location.name}`;
+
+            // Info row
+            const infoRow = document.getElementById('info-row');
+            infoRow.innerHTML = `
+    <div class="info-chip">🌐 Lat <b>${location.lat.toFixed(4)}</b></div>
+    <div class="info-chip">🌐 Lon <b>${location.lon.toFixed(4)}</b></div>
+    <div class="info-chip">🌿 Crop <b>${location.crop}</b></div>
+    <div class="info-chip">💧 Soil Moisture <b>${(ndvi.soil_moisture * 100).toFixed(1)}%</b></div>
+    <div class="info-chip">📡 Data Source <b>${weather.source}</b></div>
+  `;
+
+            // ── Yield Banner
+            animateNumber('yb-val', yld.predicted, 1);
+            document.getElementById('yb-crop').textContent = yld.crop;
+            setTimeout(() => {
+                document.getElementById('conf-fill').style.width = yld.confidence + '%';
+                document.getElementById('conf-pct').textContent = yld.confidence + '%';
+            }, 300);
+
+            // ── Metric Cards
+            animateNumber('mc-yield', yld.predicted, 1);
+            setTimeout(() => { document.getElementById('mc-yield-bar').style.width = Math.min(yld.predicted / 12 * 100, 100) + '%'; }, 300);
+
+            animateNumber('mc-ndvi', ndvi.current, 3);
+            setTimeout(() => { document.getElementById('mc-ndvi-bar').style.width = ndvi.current * 100 + '%'; }, 300);
+
+            animateNumber('mc-temp', weather.temperature, 1);
+            document.getElementById('mc-feels').textContent = weather.feels_like + '°';
+            setTimeout(() => { document.getElementById('mc-temp-bar').style.width = Math.min(weather.temperature / 45 * 100, 100) + '%'; }, 300);
+
+            animateNumber('mc-rain', weather.rainfall, 1);
+            setTimeout(() => { document.getElementById('mc-rain-bar').style.width = Math.min(weather.rainfall / 300 * 100, 100) + '%'; }, 300);
+
+            document.getElementById('mc-health').textContent = health.icon + ' ' + health.status;
+            document.getElementById('mc-health-score').textContent = health.score;
+            document.getElementById('mc-health-icon').textContent = health.icon;
+            setTimeout(() => {
+                document.getElementById('mc-health-bar').style.backgroundColor = health.color;
+                document.getElementById('mc-health-bar').style.width = health.score + '%';
+            }, 300);
+
+            // ── Weather
+            document.getElementById('wx-icon').textContent = weatherCodeToEmoji(weather.description);
+            document.getElementById('wx-temp').innerHTML = `${weather.temperature}<sup>°C</sup>`;
+            document.getElementById('wx-desc').textContent = weather.description;
+            document.getElementById('wx-source').textContent = '📡 ' + weather.source;
+            document.getElementById('wx-source-badge').textContent = weather.source;
+            document.getElementById('wx-hum').textContent = weather.humidity + '%';
+            document.getElementById('wx-rain').textContent = weather.rainfall + ' mm';
+            document.getElementById('wx-wind').textContent = weather.wind_speed + ' km/h';
+            document.getElementById('wx-pres').textContent = weather.pressure + ' hPa';
+
+            // ── NDVI Gauge
+            const ndviVal = ndvi.current;
+            document.getElementById('ndvi-num').textContent = ndviVal.toFixed(3);
+            document.getElementById('health-status').textContent = health.icon + ' ' + health.status;
+            document.getElementById('health-status').style.color = health.color;
+            document.getElementById('health-score-txt').textContent = `Crop Health Score: ${health.score}/100`;
+            const totalArc = 236;
+            setTimeout(() => {
+                document.getElementById('ndvi-arc-path').setAttribute('stroke-dasharray', `${ndviVal * totalArc} ${totalArc}`);
+                document.getElementById('ndvi-arc-path').setAttribute('stroke', ndviToColor(ndviVal));
+            }, 200);
+            setTimeout(() => {
+                document.getElementById('soil-bar').style.width = (ndvi.soil_moisture * 100) + '%';
+                document.getElementById('soil-val').textContent = (ndvi.soil_moisture * 100).toFixed(1) + ' %';
+            }, 300);
+
+            // ── Charts
+            renderNDVIChart(ndvi.trend);
+            renderYieldChart(yld.history);
+            renderRainChart(rainfall_trend);
+        }
+
+        // ─── CHARTS ───────────────────────────────────────────────────────────
+        function renderNDVIChart(trend) {
+            const labels = trend.map(t => t.month);
+            const values = trend.map(t => t.ndvi);
+
+            if (chartNDVI) chartNDVI.destroy();
+            const ctx = document.getElementById('chart-ndvi').getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, 200);
+            grad.addColorStop(0, 'rgba(34,211,238,0.35)');
+            grad.addColorStop(1, 'rgba(34,211,238,0.01)');
+
+            chartNDVI = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'NDVI',
+                        data: values,
+                        borderColor: '#22d3ee',
+                        backgroundColor: grad,
+                        borderWidth: 2.5,
+                        pointRadius: 4, pointHoverRadius: 7,
+                        pointBackgroundColor: '#22d3ee',
+                        fill: true, tension: 0.4,
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b' } },
+                        y: { min: 0, max: 1, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b' } }
+                    }
+                }
+            });
+        }
+
+        function renderYieldChart(history) {
+            const labels = history.map(h => h.year);
+            const actual = history.map(h => h.actual);
+            const predicted = history.map(h => h.predicted);
+
+            if (chartYield) chartYield.destroy();
+            const ctx = document.getElementById('chart-yield').getContext('2d');
+            chartYield = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Actual Yield',
+                            data: actual,
+                            backgroundColor: 'rgba(56,189,109,0.65)',
+                            borderColor: '#38bd6d',
+                            borderWidth: 1.5, borderRadius: 6,
+                        },
+                        {
+                            label: 'Predicted Yield',
+                            data: predicted,
+                            backgroundColor: 'rgba(34,211,238,0.5)',
+                            borderColor: '#22d3ee',
+                            borderWidth: 1.5, borderRadius: 6,
+                            type: 'line',
+                            fill: false, tension: 0.3,
+                            pointRadius: 4, pointHoverRadius: 7,
+                        }
+                    ]
+                },
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b' } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', callback: v => v + ' t/ha' } }
+                    }
+                }
+            });
+        }
+
+        function renderRainChart(trend) {
+            const labels = trend.map(t => t.month);
+            const values = trend.map(t => Math.max(0, t.rainfall));
+            const colors = values.map(v => v > 150 ? 'rgba(167,139,250,0.75)' : v > 80 ? 'rgba(99,102,241,0.65)' : 'rgba(148,163,184,0.5)');
+
+            if (chartRain) chartRain.destroy();
+            const ctx = document.getElementById('chart-rain').getContext('2d');
+            chartRain = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Rainfall (mm)',
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: 'rgba(167,139,250,0.4)',
+                        borderWidth: 1, borderRadius: 6,
+                    }]
+                },
+                options: {
+                    ...chartDefaults,
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b' } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', callback: v => v + ' mm' } }
+                    }
+                }
+            });
+        }
+
+        // ─── HELPERS ──────────────────────────────────────────────────────────
+        function animateNumber(id, target, decimals) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const start = 0, duration = 800;
+            const startTime = performance.now();
+            function step(now) {
+                const p = Math.min((now - startTime) / duration, 1);
+                const ease = 1 - Math.pow(1 - p, 3);
+                el.textContent = (start + (target - start) * ease).toFixed(decimals);
+                if (p < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        function ndviToColor(v) {
+            if (v >= 0.75) return '#00e676';
+            if (v >= 0.60) return '#69f0ae';
+            if (v >= 0.45) return '#ffeb3b';
+            if (v >= 0.30) return '#ff9800';
+            return '#f44336';
+        }
+
+        const WEATHER_EMOJIS = {
+            clear: '☀️', sun: '☀️', 'partly cloud': '⛅', cloud: '☁️',
+            overcast: '☁️', fog: '🌫️', drizzle: '🌦️', rain: '🌧️',
+            thunder: '⛈️', snow: '❄️', haze: '🌫️', mist: '🌫️',
+        };
+        function weatherCodeToEmoji(desc) {
+            desc = (desc || '').toLowerCase();
+            for (const [key, emoji] of Object.entries(WEATHER_EMOJIS)) {
+                if (desc.includes(key)) return emoji;
+            }
+            return '🌤️';
+        }
+
+        function updateTimestamp(iso) {
+            const d = new Date(iso);
+            document.getElementById('last-updated').textContent =
+                'Updated: ' + d.toLocaleTimeString();
+        }
+
+        function showLoading(show) {
+            const el = document.getElementById('loading-overlay');
+            el.classList.toggle('hidden', !show);
+            const btn = document.getElementById('btn-refresh');
+            btn.classList.toggle('loading', show);
+            btn.querySelector('span').textContent = show ? '⌛' : '⟳';
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('error-toast');
+            el.textContent = '⚠️ ' + msg;
+            el.style.display = 'block';
+            setTimeout(() => { el.style.display = 'none'; }, 6000);
+        }
+
+        // ─── INIT ──────────────────────────────────────────────────────────────
+        window.addEventListener('load', async () => {
+            initMap();
+            await loadLocations();
+        });
+    </script>
+</body>
+
+</html>
