@@ -187,7 +187,8 @@ const YieldPrediction = () => {
             // If backend is not running, falls back to the JS prediction formula.
             let predictedYield: number;
             try {
-                const resp = await fetch("http://localhost:5000/api/predict", {
+                const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+                const resp = await fetch(`${API_URL}/api/predict`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ rainfall, temperature, humidity, ndvi }),
