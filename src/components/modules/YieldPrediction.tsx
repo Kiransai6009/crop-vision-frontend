@@ -230,26 +230,31 @@ const YieldPrediction = () => {
             </div>
 
             {/* ── Live Data Auto-fill Banner ─────────────────────────────── */}
-            <div className="bg-gradient-to-r from-blue-500/10 to-teal-500/10 border border-blue-500/20 rounded-xl p-4">
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-2">
-                        <Wifi className="w-4 h-4 text-blue-500" />
-                        <span className="text-sm font-semibold text-foreground">Live Weather Auto-Fill</span>
-                        {liveData.status === "live" && (
-                            <span className="text-xs bg-green-500/20 text-green-700 px-2 py-0.5 rounded-full border border-green-500/30">
-                                ● Live
-                            </span>
-                        )}
-                        {liveData.status === "loading" && (
-                            <RefreshCw className="w-3 h-3 animate-spin text-muted-foreground" />
-                        )}
+            <div className="bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 rounded-2xl p-6 backdrop-blur-md">
+                <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <Wifi className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                            <span className="text-sm font-bold text-foreground block">Satellite Sync</span>
+                            {liveData.status === "live" ? (
+                                <span className="text-[10px] text-green-400 font-black uppercase tracking-widest">
+                                    Active Connection
+                                </span>
+                            ) : (
+                                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+                                    Connecting...
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     {/* District selector */}
                     <select
                         value={liveDistrict}
                         onChange={e => setLiveDistrict(e.target.value)}
-                        className="flex-1 min-w-36 px-2 py-1.5 rounded-lg bg-muted border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="flex-1 min-w-[200px] px-4 py-2 rounded-xl bg-background/50 border border-border/40 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-medium"
                     >
                         {DISTRICT_NAMES.map(d => (
                             <option key={d} value={d}>{d}</option>
@@ -258,10 +263,10 @@ const YieldPrediction = () => {
 
                     <button
                         onClick={fillFromLive}
-                        className="flex items-center gap-1.5 px-4 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors"
+                        className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-black uppercase tracking-wider hover:shadow-lg hover:shadow-primary/20 transition-all active:scale-95"
                     >
-                        <MapPin className="w-3.5 h-3.5" />
-                        Auto-Fill Weather
+                        <MapPin className="w-4 h-4" />
+                        Auto-Fetch
                     </button>
                 </div>
 
@@ -284,71 +289,73 @@ const YieldPrediction = () => {
 
             <div className="grid md:grid-cols-2 gap-6">
                 {/* ── Left: Input Form ─────────────────────────────────── */}
-                <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-                    <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide">Weather Inputs</h3>
+                <div className="glass-card rounded-2xl p-8 space-y-6">
+                    <h3 className="font-display font-black text-xs uppercase tracking-[0.2em] text-primary">Weather Payload</h3>
 
-                    {/* Rainfall */}
-                    <label className="block">
-                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
-                            <CloudRain className="w-3.5 h-3.5" /> Rainfall (mm)
-                        </span>
-                        <input
-                            name="rainfall"
-                            type="number"
-                            placeholder="e.g. 180"
-                            value={form.rainfall}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
-                    </label>
+                    <div className="space-y-4">
+                        {/* Rainfall */}
+                        <label className="block">
+                            <span className="flex items-center gap-2 text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider">
+                                <CloudRain className="w-4 h-4" /> Rainfall (mm)
+                            </span>
+                            <input
+                                name="rainfall"
+                                type="number"
+                                placeholder="0.0"
+                                value={form.rainfall}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 rounded-xl bg-background/50 border border-border/40 text-foreground focus:ring-2 focus:ring-primary/50 transition-all font-mono"
+                            />
+                        </label>
 
-                    {/* Temperature */}
-                    <label className="block">
-                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
-                            <Thermometer className="w-3.5 h-3.5" /> Temperature (°C)
-                        </span>
-                        <input
-                            name="temperature"
-                            type="number"
-                            placeholder="e.g. 28"
-                            value={form.temperature}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
-                    </label>
+                        {/* Temperature */}
+                        <label className="block">
+                            <span className="flex items-center gap-2 text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider">
+                                <Thermometer className="w-4 h-4" /> Temperature (°C)
+                            </span>
+                            <input
+                                name="temperature"
+                                type="number"
+                                placeholder="0.0"
+                                value={form.temperature}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 rounded-xl bg-background/50 border border-border/40 text-foreground focus:ring-2 focus:ring-primary/50 transition-all font-mono"
+                            />
+                        </label>
 
-                    {/* Humidity */}
-                    <label className="block">
-                        <span className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1">
-                            <Droplets className="w-3.5 h-3.5" /> Humidity (%)
-                        </span>
-                        <input
-                            name="humidity"
-                            type="number"
-                            placeholder="e.g. 65"
-                            value={form.humidity}
-                            onChange={handleChange}
-                            className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
-                    </label>
+                        {/* Humidity */}
+                        <label className="block">
+                            <span className="flex items-center gap-2 text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider">
+                                <Droplets className="w-4 h-4" /> Humidity (%)
+                            </span>
+                            <input
+                                name="humidity"
+                                type="number"
+                                placeholder="0.0"
+                                value={form.humidity}
+                                onChange={handleChange}
+                                className="w-full px-4 py-3 rounded-xl bg-background/50 border border-border/40 text-foreground focus:ring-2 focus:ring-primary/50 transition-all font-mono"
+                            />
+                        </label>
+                    </div>
 
                     {/* NDVI Source Toggle */}
-                    <div className="border-t border-border pt-4">
-                        <h3 className="font-semibold text-foreground text-sm uppercase tracking-wide mb-3">NDVI Source</h3>
-                        <div className="flex gap-2 mb-3">
+                    <div className="border-t border-border/40 pt-6">
+                        <h3 className="font-display font-black text-xs uppercase tracking-[0.2em] text-secondary mb-4">Spectral Source</h3>
+                        <div className="flex gap-3 mb-6">
                             <button
                                 onClick={() => setUseManualNDVI(false)}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${!useManualNDVI ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border-border"
+                                className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${!useManualNDVI ? "bg-primary text-primary-foreground border-primary" : "bg-muted/40 text-muted-foreground border-border/50 hover:bg-muted/60"
                                     }`}
                             >
-                                📡 Image Upload
+                                Satellite Image
                             </button>
                             <button
                                 onClick={() => setUseManualNDVI(true)}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${useManualNDVI ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border-border"
+                                className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${useManualNDVI ? "bg-primary text-primary-foreground border-primary" : "bg-muted/40 text-muted-foreground border-border/50 hover:bg-muted/60"
                                     }`}
                             >
-                                🔢 Manual NIR/RED
+                                Manual Bands
                             </button>
                         </div>
 
@@ -422,77 +429,92 @@ const YieldPrediction = () => {
                         <motion.div
                             initial={{ opacity: 0, scale: 0.96 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            className="bg-card border border-border rounded-xl p-6"
+                            className="glass-card rounded-2xl p-8 border border-primary/20"
                         >
-                            <div className="flex items-center gap-2 mb-5">
-                                <CheckCircle className="w-5 h-5 text-primary" />
-                                <h3 className="font-semibold text-foreground">Prediction Results</h3>
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                    <CheckCircle className="w-5 h-5 text-primary" />
+                                </div>
+                                <h3 className="font-display font-bold text-lg text-foreground">Intelligence Report</h3>
                             </div>
 
                             {/* Yield — big number */}
-                            <div className="text-center py-6 bg-primary/10 rounded-xl mb-4">
-                                <div className="text-5xl font-display font-bold text-primary mb-1">
-                                    {result.predictedYield}
+                            <div className="text-center py-10 bg-primary/10 rounded-2xl mb-6 relative overflow-hidden group">
+                                <div className="absolute inset-0 bg-primary/5 blur-3xl group-hover:bg-primary/10 transition-colors" />
+                                <div className="relative z-10">
+                                    <div className="text-6xl font-display font-black text-primary mb-1 tracking-tighter">
+                                        {result.predictedYield}
+                                    </div>
+                                    <div className="text-[10px] text-primary/70 font-black uppercase tracking-[0.2em]">tons / hectare</div>
                                 </div>
-                                <div className="text-sm text-muted-foreground font-medium">tons / hectare</div>
                             </div>
 
                             {/* NDVI */}
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                                <div className="bg-muted rounded-lg p-4 text-center">
-                                    <p className="text-xs text-muted-foreground mb-1">NDVI Value</p>
-                                    <p className="text-2xl font-bold text-foreground">{result.ndvi.toFixed(3)}</p>
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                <div className="bg-background/40 rounded-xl p-5 border border-border/40 text-center">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-2">NDVI Index</p>
+                                    <p className="text-2xl font-black text-foreground tabular-nums">{result.ndvi.toFixed(3)}</p>
                                 </div>
-                                <div className="bg-muted rounded-lg p-4 text-center">
-                                    <p className="text-xs text-muted-foreground mb-1">Crop Status</p>
-                                    <p className={`text-lg font-bold ${result.cropStatus === "Healthy" ? "text-green-600" :
-                                        result.cropStatus === "Moderate" ? "text-yellow-600" : "text-red-600"
+                                <div className="bg-background/40 rounded-xl p-5 border border-border/40 text-center">
+                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-2">Vegetation</p>
+                                    <p className={`text-sm font-black uppercase tracking-widest ${result.cropStatus === "Healthy" ? "text-green-400" :
+                                        result.cropStatus === "Moderate" ? "text-yellow-400" : "text-red-400"
                                         }`}>
-                                        {result.cropStatus === "Healthy" ? "🟢" :
-                                            result.cropStatus === "Moderate" ? "🟡" : "🔴"} {result.cropStatus}
+                                        {result.cropStatus}
                                     </p>
                                 </div>
                             </div>
 
                             {/* Confidence bar */}
-                            <div>
-                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                                    <span>Model Confidence</span>
+                            <div className="mb-6">
+                                <div className="flex justify-between text-[10px] font-bold text-muted-foreground mb-2 uppercase tracking-widest">
+                                    <span>Model Accuracy</span>
                                     <span>{result.confidence}%</span>
                                 </div>
-                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div className="h-2.5 bg-background/60 rounded-full overflow-hidden border border-border/30">
                                     <motion.div
                                         initial={{ width: 0 }}
                                         animate={{ width: `${result.confidence}%` }}
-                                        transition={{ duration: 0.8, ease: "easeOut" }}
-                                        className="h-full bg-primary rounded-full"
+                                        transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+                                        className="h-full bg-gradient-to-r from-primary to-secondary rounded-full"
                                     />
                                 </div>
                             </div>
 
                             {/* Formula display */}
-                            <div className="mt-4 p-3 bg-muted rounded-lg text-xs text-muted-foreground">
-                                <p className="font-mono">NDVI = (NIR − RED) / (NIR + RED) = {result.ndvi.toFixed(3)}</p>
-                                <p className="font-mono mt-1">Yield ≈ base + f(rainfall, NDVI, temp, humidity) = {result.predictedYield} t/ha</p>
+                            <div className="p-4 bg-muted/40 rounded-xl text-[10px] font-medium text-muted-foreground/80 leading-loose border border-border/30">
+                                <p className="font-mono">NDVI = (NIR [{form.nirValue || "180"}] − RED [{form.redValue || "60"}]) / ΣRef = {result.ndvi.toFixed(3)}</p>
+                                <p className="font-mono mt-1 italic">Resolution: Sentinel-2 10m/px</p>
                             </div>
                         </motion.div>
                     ) : (
-                        <div className="bg-card border border-border rounded-xl p-6 flex flex-col items-center justify-center text-center h-80 text-muted-foreground">
-                            <Satellite className="w-16 h-16 mb-3 opacity-20" />
-                            <p className="text-sm">Fill in the form and click <strong>Predict Yield</strong></p>
-                            <p className="text-xs mt-1">Results will appear here</p>
+                        <div className="glass-card rounded-2xl p-8 flex flex-col items-center justify-center text-center h-80 text-muted-foreground border-dashed">
+                            <Satellite className="w-16 h-16 mb-4 opacity-10 animate-pulse-slow" />
+                            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground/60">Awaiting Telemetry</p>
+                            <p className="text-xs mt-2 max-w-[200px]">Initialize the sensors and click predict to generate insights.</p>
                         </div>
                     )}
 
                     {/* Info card — how it works */}
-                    <div className="bg-card border border-border rounded-xl p-5 text-sm">
-                        <p className="font-semibold text-foreground mb-2">How it works</p>
-                        <ol className="text-muted-foreground space-y-1.5 text-xs list-decimal list-inside">
-                            <li>Enter rainfall, temperature, and humidity</li>
-                            <li>Upload a satellite image <em>or</em> enter raw NIR/RED values</li>
-                            <li>NDVI is computed using the standard formula</li>
-                            <li>ML regression model predicts yield in tons/hectare</li>
-                            <li>If Flask API is running, predictions use the backend model</li>
+                    <div className="glass-card rounded-2xl p-6 space-y-4">
+                        <p className="font-display font-black text-xs uppercase tracking-[0.2em] text-primary">Intelligence Protocol</p>
+                        <ol className="text-muted-foreground space-y-3 text-[11px] font-medium">
+                            <li className="flex gap-2">
+                                <span className="text-primary font-black">01</span>
+                                <span>Input hyper-local weather parameters (Temp, Rain, Humidity).</span>
+                            </li>
+                            <li className="flex gap-2">
+                                <span className="text-primary font-black">02</span>
+                                <span>Supply spectral data via satellite imagery or raw NIR/RED bands.</span>
+                            </li>
+                            <li className="flex gap-2">
+                                <span className="text-primary font-black">03</span>
+                                <span>The system computes NDVI (Normalized Difference Vegetation Index).</span>
+                            </li>
+                            <li className="flex gap-2">
+                                <span className="text-primary font-black">04</span>
+                                <span>ML models synthesize all inputs to project harvest yield.</span>
+                            </li>
                         </ol>
                     </div>
                 </div>

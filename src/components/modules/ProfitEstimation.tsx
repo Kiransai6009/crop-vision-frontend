@@ -11,10 +11,11 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DollarSign, TrendingUp, TrendingDown, Calculator, IndianRupee, Info } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Calculator, IndianRupee, Info, Loader2 } from "lucide-react";
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from "recharts";
+import { yieldService } from "../../services/api";
 
 /* ── Estimated cost ratios per crop (per hectare, INR) ──────────────── */
 const CROP_COSTS: Record<string, { seeds: number; fertilizer: number; irrigation: number; labour: number }> = {
@@ -38,35 +39,81 @@ const AnimatedNumber = ({ value }: { value: number }) => (
     </motion.span>
 );
 
-/* ── Component ─────────────────────────────────────────────────────── */
 const ProfitEstimation = () => {
     const [crop, setCrop] = useState("Rice");
     const [yield_, setYield] = useState("2.8");
     const [area, setArea] = useState("1");
     const [price, setPrice] = useState("20000");
     const [calculated, setCalculated] = useState(false);
+    const [loading, setLoading] = useState(false);
+    
+    // State to store backend results
+    const [results, setResults] = useState<{
+        grossIncome: number;
+        totalCost: number;
+        netProfit: number;
+        profitPct: number;
+        totalYield: number;
+    } | null>(null);
 
-    /* ── Core calculation ── */
-    const yieldPerHa = parseFloat(yield_) || 0;
-    const areaHa = parseFloat(area) || 1;
-    const pricePerTon = parseFloat(price) || 0;
-    const totalYield = yieldPerHa * areaHa;
-    const grossIncome = totalYield * pricePerTon;
+    const handleCalculate = async () => {
+        const yieldPerHa = parseFloat(yield_) || 0;
+        const areaHa = parseFloat(area) || 1;
+        const pricePerTon = parseFloat(price) || 0;
+
+        if (yieldPerHa <= 0 || pricePerTon <= 0) return;
+
+        setLoading(true);
+        try {
+            const data = await yieldService.calculateProfit({
+                yield_per_ha: yieldPerHa,
+                area_ha: areaHa,
+                price_per_ton: pricePerTon
+            });
+            
+            setResults({
+                grossIncome: data.gross_income,
+                totalCost: data.total_cost,
+                netProfit: data.net_profit,
+                profitPct: Math.round((data.net_profit / data.gross_income) * 100),
+                totalYield: data.total_yield_tons
+            });
+            setCalculated(true);
+        } catch (error) {
+            console.error("Profit calculation failed, using fallback", error);
+            // Fallback local logic
+            const totalYield = yieldPerHa * areaHa;
+            const grossIncome = totalYield * pricePerTon;
+            const costs = CROP_COSTS[crop] || CROP_COSTS["Other"];
+            const totalCost = (costs.seeds + costs.fertilizer + costs.irrigation + costs.labour) * areaHa;
+            const netProfit = grossIncome - totalCost;
+            
+            setResults({
+                grossIncome,
+                totalCost,
+                netProfit,
+                profitPct: Math.round((netProfit / grossIncome) * 100),
+                totalYield
+            });
+            setCalculated(true);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const costs = CROP_COSTS[crop] || CROP_COSTS["Other"];
-    const totalCostPerHa = costs.seeds + costs.fertilizer + costs.irrigation + costs.labour;
-    const totalCost = totalCostPerHa * areaHa;
-    const netProfit = grossIncome - totalCost;
-    const profitPct = grossIncome > 0 ? Math.round((netProfit / grossIncome) * 100) : 0;
+    const areaHa = parseFloat(area) || 1;
+    const yieldPerHa = parseFloat(yield_) || 0;
+    const pricePerTon = parseFloat(price) || 0;
 
-    /* Chart data */
-    const chartData = [
+    const chartData = results ? [
         { name: "Seeds", value: costs.seeds * areaHa, fill: "#6366f1" },
         { name: "Fertilizer", value: costs.fertilizer * areaHa, fill: "#f59e0b" },
         { name: "Irrigation", value: costs.irrigation * areaHa, fill: "#06b6d4" },
         { name: "Labour", value: costs.labour * areaHa, fill: "#ec4899" },
-        { name: "Gross Income", value: grossIncome, fill: "#16a34a" },
-    ];
+        { name: "Gross Income", value: results.grossIncome, fill: "#16a34a" },
+    ] : [];
+
 
     return (
         <div className="max-w-4xl mx-auto space-y-6">
@@ -136,17 +183,19 @@ const ProfitEstimation = () => {
                     </label>
 
                     <button
-                        onClick={() => setCalculated(true)}
-                        className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+                        onClick={handleCalculate}
+                        disabled={loading}
+                        className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                     >
-                        <Calculator className="w-4 h-4" /> Calculate Profit
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calculator className="w-4 h-4" />}
+                        {loading ? "Calculating..." : "Calculate Profit"}
                     </button>
                 </div>
 
                 {/* ── Results ──────────────────────────────────────────── */}
                 <div className="space-y-3">
                     <AnimatePresence>
-                        {calculated && yieldPerHa > 0 && pricePerTon > 0 ? (
+                        {calculated && results && yieldPerHa > 0 && pricePerTon > 0 ? (
                             <motion.div
                                 key="result"
                                 initial={{ opacity: 0, scale: 0.95 }}
@@ -155,8 +204,8 @@ const ProfitEstimation = () => {
                             >
                                 {/* Formula display */}
                                 <div className="bg-muted rounded-xl p-4 font-mono text-sm text-muted-foreground border border-border">
-                                    <p>{yieldPerHa} t/ha × {areaHa} ha = <strong className="text-foreground">{totalYield.toFixed(2)} tons</strong></p>
-                                    <p className="mt-1">{totalYield.toFixed(2)} tons × ₹{Number(price).toLocaleString("en-IN")} = <strong className="text-green-600">₹<AnimatedNumber value={grossIncome} /></strong></p>
+                                    <p>{yieldPerHa} t/ha × {areaHa} ha = <strong className="text-foreground">{results.totalYield.toFixed(2)} tons</strong></p>
+                                    <p className="mt-1">{results.totalYield.toFixed(2)} tons × ₹{Number(price).toLocaleString("en-IN")} = <strong className="text-green-600">₹<AnimatedNumber value={results.grossIncome} /></strong></p>
                                 </div>
 
                                 {/* Gross Income */}
@@ -166,7 +215,7 @@ const ProfitEstimation = () => {
                                         <p className="text-sm font-semibold text-green-700">Gross Income</p>
                                     </div>
                                     <p className="text-3xl font-display font-bold text-green-600">
-                                        ₹<AnimatedNumber value={grossIncome} />
+                                        ₹<AnimatedNumber value={results.grossIncome} />
                                     </p>
                                 </div>
 
@@ -177,15 +226,15 @@ const ProfitEstimation = () => {
                                             <TrendingDown className="w-3.5 h-3.5 text-red-500" />
                                             <p className="text-xs font-semibold text-red-600">Total Cost</p>
                                         </div>
-                                        <p className="text-2xl font-bold text-red-600">₹<AnimatedNumber value={totalCost} /></p>
+                                        <p className="text-2xl font-bold text-red-600">₹<AnimatedNumber value={results.totalCost} /></p>
                                     </div>
-                                    <div className={`rounded-xl p-4 border ${netProfit >= 0 ? "bg-emerald-500/10 border-emerald-500/30" : "bg-red-500/10 border-red-500/30"}`}>
+                                    <div className={`rounded-xl p-4 border ${results.netProfit >= 0 ? "bg-emerald-500/10 border-emerald-500/30" : "bg-red-500/10 border-red-500/30"}`}>
                                         <div className="flex items-center gap-1.5 mb-1">
                                             <DollarSign className="w-3.5 h-3.5" />
-                                            <p className={`text-xs font-semibold ${netProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>Net Profit</p>
+                                            <p className={`text-xs font-semibold ${results.netProfit >= 0 ? "text-emerald-700" : "text-red-600"}`}>Net Profit</p>
                                         </div>
-                                        <p className={`text-2xl font-bold ${netProfit >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                                            ₹<AnimatedNumber value={Math.abs(netProfit)} />
+                                        <p className={`text-2xl font-bold ${results.netProfit >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                                            ₹<AnimatedNumber value={Math.abs(results.netProfit)} />
                                         </p>
                                     </div>
                                 </div>
@@ -194,17 +243,18 @@ const ProfitEstimation = () => {
                                 <div className="bg-card border border-border rounded-xl p-4">
                                     <div className="flex justify-between text-xs mb-1">
                                         <span className="text-muted-foreground">Profit Margin</span>
-                                        <span className={`font-bold ${profitPct >= 0 ? "text-green-600" : "text-red-600"}`}>{profitPct}%</span>
+                                        <span className={`font-bold ${results.profitPct >= 0 ? "text-green-600" : "text-red-600"}`}>{results.profitPct}%</span>
                                     </div>
                                     <div className="h-3 bg-muted rounded-full overflow-hidden">
                                         <motion.div
                                             initial={{ width: 0 }}
-                                            animate={{ width: `${Math.max(0, Math.min(100, profitPct))}%` }}
+                                            animate={{ width: `${Math.max(0, Math.min(100, results.profitPct))}%` }}
                                             transition={{ duration: 0.8, ease: "easeOut" }}
-                                            className={`h-full rounded-full ${profitPct >= 30 ? "bg-green-500" : profitPct >= 0 ? "bg-yellow-500" : "bg-red-500"}`}
+                                            className={`h-full rounded-full ${results.profitPct >= 30 ? "bg-green-500" : results.profitPct >= 0 ? "bg-yellow-500" : "bg-red-500"}`}
                                         />
                                     </div>
                                 </div>
+
 
                                 {/* Cost breakdown info */}
                                 <div className="bg-muted rounded-xl p-4 text-xs text-muted-foreground space-y-1">

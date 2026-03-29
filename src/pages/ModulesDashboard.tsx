@@ -1,24 +1,9 @@
-/**
- * ModulesDashboard.tsx
- * ─────────────────────────────────────────────
- * Main page housing all 12 feature modules via a tab navigation bar.
- *
- * Modules:
- *  1. Yield Prediction        7. Multi-Crop Comparison
- *  2. Crop Health Monitoring  8. Prediction History
- *  3. Weather Dashboard       9. District Heatmap
- *  4. Risk Alert System      10. Satellite Analysis (NEW)
- *  5. Profit Estimation      11. Disease Detection (NEW)
- *  6. Fertilizer Rec         12. Market Prices (NEW)
- */
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Link } from "react-router-dom";
 import {
-  ArrowLeft, Satellite, Leaf, CloudRain, AlertTriangle,
+  Satellite, Leaf, CloudRain, AlertTriangle,
   DollarSign, FlaskConical, GitCompare, History, Map,
-  Microscope, IndianRupee, Layers
+  Microscope, IndianRupee, Layers, LayoutGrid
 } from "lucide-react";
 
 import YieldPrediction from "@/components/modules/YieldPrediction";
@@ -34,96 +19,88 @@ import SatelliteAnalysis from "@/components/modules/SatelliteAnalysis";
 import DiseaseDetection from "@/components/modules/DiseaseDetection";
 import MarketPrices from "@/components/modules/MarketPrices";
 
-/* ── Tab Definitions ───────────────────────────────────────────────── */
 const TABS = [
-  { id: "yield", label: "Yield Prediction", icon: Satellite, component: YieldPrediction, badge: null },
+  { id: "yield", label: "Yield", icon: Satellite, component: YieldPrediction, badge: null },
   { id: "satellite", label: "Satellite Analysis", icon: Layers, component: SatelliteAnalysis, badge: "NEW" },
   { id: "health", label: "Crop Health", icon: Leaf, component: CropHealthMonitor, badge: null },
   { id: "weather", label: "Weather", icon: CloudRain, component: WeatherDashboard, badge: "LIVE" },
   { id: "disease", label: "Disease AI", icon: Microscope, component: DiseaseDetection, badge: "NEW" },
-  { id: "market", label: "Market Prices", icon: IndianRupee, component: MarketPrices, badge: "NEW" },
+  { id: "market", label: "Market", icon: IndianRupee, component: MarketPrices, badge: "NEW" },
   { id: "risk", label: "Risk Alerts", icon: AlertTriangle, component: RiskAlertSystem, badge: null },
-  { id: "profit", label: "Profit Estimator", icon: DollarSign, component: ProfitEstimation, badge: null },
+  { id: "profit", label: "Profit", icon: DollarSign, component: ProfitEstimation, badge: null },
   { id: "fertilizer", label: "Fertilizer", icon: FlaskConical, component: FertilizerRec, badge: null },
-  { id: "comparison", label: "Crop Comparison", icon: GitCompare, component: MultiCropComparison, badge: null },
+  { id: "comparison", label: "Compare", icon: GitCompare, component: MultiCropComparison, badge: null },
   { id: "history", label: "History", icon: History, component: PredictionHistory, badge: null },
   { id: "heatmap", label: "Heatmap", icon: Map, component: DistrictHeatmap, badge: null },
 ] as const;
 
 type TabId = typeof TABS[number]["id"];
 
-/* ── Page Component ────────────────────────────────────────────────── */
 const ModulesDashboard = () => {
   const [activeTab, setActiveTab] = useState<TabId>("yield");
-
   const ActiveComponent = TABS.find(t => t.id === activeTab)!.component;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* ── Header ───────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border shadow-sm">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center gap-3 h-14">
-            <Link to="/dashboard" className="p-2 rounded-lg hover:bg-muted transition-colors">
-              <ArrowLeft className="w-4 h-4 text-muted-foreground" />
-            </Link>
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-                <Satellite className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <span className="font-display font-bold text-foreground">Crop Insight</span>
-              <span className="text-muted-foreground text-sm ml-1">/ All Modules</span>
-            </div>
-          </div>
+    <div className="flex flex-col gap-4 relative z-20">
+      {/* ── Page Header (Compact) ── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-border/10 pb-3">
+        <div>
+          <h1 className="font-display text-2xl font-black text-foreground flex items-center gap-2 tracking-tight">
+             <LayoutGrid className="w-6 h-6 text-primary" />
+             <span>Feature Core</span>
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+            Access 12 powerful analytical modules for crop intelligence.
+          </p>
         </div>
-      </header>
+      </div>
 
-      {/* ── Tab Bar ──────────────────────────────────────────────── */}
-      <nav className="bg-card border-b border-border overflow-x-auto scrollbar-none">
-        <div className="flex px-4 gap-1 min-w-max">
-          {TABS.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`
-                  relative flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap
-                  border-b-2 transition-all duration-200
-                  ${isActive
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-                  }
-                `}
-              >
-                <Icon className="w-4 h-4" />
-                {tab.label}
-                {tab.badge && (
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-1 ${tab.badge === "LIVE" ? "bg-green-500 text-white" :
-                      tab.badge === "NEW" ? "bg-primary text-white" : "bg-muted text-muted-foreground"
-                    }`}>{tab.badge}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+      {/* ── Tab Navigation (Compact) ── */}
+      <nav className="p-1 px-1.5 flex gap-1 overflow-x-auto no-scrollbar bg-card/40 backdrop-blur-md rounded-xl border border-border shadow-sm">
+        {TABS.map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`
+                relative flex items-center gap-2 px-3 py-2 text-[10px] font-bold whitespace-nowrap
+                rounded-lg transition-all duration-300 group
+                ${isActive
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 scale-100"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground scale-95"
+                }
+              `}
+            >
+              <Icon className={`w-4 h-4 transition-transform group-hover:scale-110 ${isActive ? "text-black" : "text-primary/70"}`} />
+              {tab.label}
+              {tab.badge && (
+                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ml-1 ${
+                    tab.badge === "LIVE" ? "bg-red-500 text-white animate-pulse" :
+                    tab.badge === "NEW" ? "bg-white/20 text-white" : "bg-muted text-muted-foreground"
+                  }`}>{tab.badge}</span>
+              )}
+            </button>
+          );
+        })}
       </nav>
 
-      {/* ── Active Module ─────────────────────────────────────────── */}
-      <main className="container mx-auto px-4 py-6">
+      {/* ── Active Module Rendering ── */}
+      <div className="relative min-h-[500px]">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.25 }}
+            initial={{ opacity: 0, scale: 0.98, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="w-full h-full"
           >
             <ActiveComponent />
           </motion.div>
         </AnimatePresence>
-      </main>
+      </div>
     </div>
   );
 };

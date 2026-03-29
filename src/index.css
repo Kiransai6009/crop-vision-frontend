@@ -1,90 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
-
 @layer base {
   :root {
-    --background: 150 10% 97%;
-    --foreground: 160 30% 8%;
-
+    --background: 210 20% 98%; /* gray-50 */
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 160 30% 8%;
-
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 160 30% 8%;
-
-    --primary: 145 63% 32%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 38 92% 50%;
-    --secondary-foreground: 0 0% 100%;
-
-    --muted: 150 10% 93%;
-    --muted-foreground: 160 10% 40%;
-
-    --accent: 200 80% 40%;
-    --accent-foreground: 0 0% 100%;
-
+    --popover-foreground: 222 47% 11%;
+    --primary: 156 72% 35%; /* green-600 */
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 156 72% 95%;
+    --accent-foreground: 156 72% 35%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-
-    --border: 150 12% 88%;
-    --input: 150 12% 88%;
-    --ring: 145 63% 32%;
-
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 156 72% 35%;
     --radius: 0.75rem;
-
-    --sidebar-background: 160 30% 8%;
-    --sidebar-foreground: 150 10% 93%;
-    --sidebar-primary: 145 63% 42%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 160 20% 15%;
-    --sidebar-accent-foreground: 150 10% 93%;
-    --sidebar-border: 160 20% 18%;
-    --sidebar-ring: 145 63% 42%;
-
-    /* Custom tokens */
-    --gradient-hero: linear-gradient(135deg, hsl(160 30% 8%) 0%, hsl(160 25% 14%) 50%, hsl(145 30% 20%) 100%);
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(150 10% 97%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(145 63% 32%) 0%, hsl(160 60% 28%) 100%);
-    --shadow-card: 0 4px 24px -4px hsl(160 30% 8% / 0.08);
-    --shadow-elevated: 0 12px 40px -8px hsl(160 30% 8% / 0.15);
-
-    --chart-1: 145 63% 32%;
-    --chart-2: 38 92% 50%;
-    --chart-3: 200 80% 40%;
-    --chart-4: 160 40% 45%;
-    --chart-5: 25 80% 55%;
   }
 
   .dark {
-    --background: 160 30% 6%;
-    --foreground: 150 10% 93%;
-    --card: 160 25% 10%;
-    --card-foreground: 150 10% 93%;
-    --popover: 160 25% 10%;
-    --popover-foreground: 150 10% 93%;
-    --primary: 145 63% 42%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 38 80% 50%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 160 20% 15%;
-    --muted-foreground: 150 10% 55%;
-    --accent: 200 70% 45%;
-    --accent-foreground: 0 0% 100%;
+    --background: 165 48% 8%; /* #0b1f1a roughly */
+    --foreground: 210 40% 98%;
+    --card: 165 43% 12%; /* #112e2a roughly */
+    --card-foreground: 210 40% 98%;
+    --popover: 165 43% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 156 100% 50%; /* #00FF87 green-400 equivalent */
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 165 43% 20%;
+    --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 160 15% 18%;
-    --input: 160 15% 18%;
-    --ring: 145 63% 42%;
-
-    --chart-1: 145 63% 42%;
-    --chart-2: 38 80% 55%;
-    --chart-3: 200 70% 50%;
-    --chart-4: 160 50% 50%;
-    --chart-5: 25 70% 60%;
+    --border: 165 43% 18%;
+    --input: 165 43% 18%;
+    --ring: 156 100% 50%;
   }
 }
 
@@ -92,36 +55,67 @@
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
+    @apply bg-background text-foreground transition-colors duration-300;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
+/* ── Typography & Display ── */
+h1, h2, h3, h4, .font-display {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+/* ── Custom Utilities ── */
 @layer utilities {
-  .text-gradient-primary {
+  .btn-glow {
+    @apply relative overflow-hidden transition-all duration-300 active:scale-95 text-black font-bold;
+    background: linear-gradient(135deg, #00FF87 0%, #60EFFF 100%);
+    box-shadow: 0 0 15px rgba(0, 255, 135, 0.4);
+  }
+  .btn-glow:hover {
+    box-shadow: 0 0 25px rgba(0, 255, 135, 0.6);
+    filter: brightness(1.1);
+  }
+
+  .glass-card {
+    @apply backdrop-blur-md border border-white/5 shadow-2xl;
+    background: rgba(17, 46, 42, 0.6);
+  }
+  
+  .dark .glass-card {
+    background: rgba(17, 46, 42, 0.65);
+  }
+
+  .light .glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    @apply border-gray-200 shadow-lg;
+  }
+
+  .text-gradient-green {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(145 63% 32%), hsl(38 92% 50%));
+    background-image: linear-gradient(135deg, #00FF87 0%, #60EFFF 100%);
   }
+  
+  .glow-text-green {
+    text-shadow: 0 0 20px rgba(0, 255, 135, 0.3);
+  }
+  
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
 
-  .bg-hero-gradient {
-    background: var(--gradient-hero);
-  }
+/* Force layout reset for Compactness */
+.compact-layout {
+  @apply flex flex-col min-h-screen w-full overflow-hidden;
+}
 
-  .bg-card-gradient {
-    background: var(--gradient-card);
-  }
-
-  .shadow-card {
-    box-shadow: var(--shadow-card);
-  }
-
-  .shadow-elevated {
-    box-shadow: var(--shadow-elevated);
-  }
+/* Smooth active state for sidebar links */
+.sidebar-link-active {
+  @apply bg-primary/10 text-primary border-l-4 border-primary;
 }

@@ -10,7 +10,8 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FlaskConical, Leaf, Check, ChevronRight } from "lucide-react";
+import { FlaskConical, Leaf, Check, ChevronRight, Loader2 } from "lucide-react";
+import { yieldService } from "../../services/api";
 
 /* ── Fertilizer rule engine ───────────────────────────────────────── */
 interface FertRec {
@@ -56,15 +57,46 @@ const getRecs = (ndviLevel: NDVILevel, soil: SoilType): FertRec[] => {
 const ndviToLevel = (v: number): NDVILevel =>
     v < 0.3 ? "poor" : v <= 0.6 ? "moderate" : "healthy";
 
-/* ── Component ─────────────────────────────────────────────────────── */
 const FertilizerRec = () => {
     const [ndviInput, setNdviInput] = useState("0.42");
     const [soil, setSoil] = useState<SoilType>("loamy");
     const [showRecs, setShowRecs] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [backendRecs, setBackendRecs] = useState<any[]>([]);
+
+    const handleGetRecommendations = async () => {
+        setLoading(true);
+        setShowRecs(false);
+        const ndviVal = parseFloat(ndviInput) || 0;
+        try {
+            const data = await yieldService.calculateFertilizer(ndviVal);
+            setBackendRecs(data.recommendations || []);
+            setShowRecs(true);
+        } catch (error) {
+            console.error("Backend fertilizer fail, using local rules", error);
+            setBackendRecs([]);
+            setShowRecs(true);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const ndvi = parseFloat(ndviInput) || 0;
     const level = ndviToLevel(ndvi);
-    const recs = getRecs(level, soil);
+    const localRecs = getRecs(level, soil);
+    
+    // We add the backend response to the list if available
+    const recs = backendRecs.length > 0 
+        ? [...backendRecs.map(r => ({
+            name: r.name,
+            type: "Backend Suggestion",
+            dose: r.dose,
+            interval: "Immediate",
+            benefit: "Calculated by AI model",
+            color: "bg-indigo-500/10 border-indigo-500/30",
+            emoji: "🤖"
+        })), ...localRecs]
+        : localRecs;
 
     const levelBadge =
         level === "poor" ? "🔴 Poor — high fertilizer need" :
@@ -125,10 +157,12 @@ const FertilizerRec = () => {
                 </div>
 
                 <button
-                    onClick={() => setShowRecs(true)}
-                    className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+                    onClick={handleGetRecommendations}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-xl font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
                 >
-                    <Check className="w-4 h-4" /> Get Recommendations
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {loading ? "Analyzing..." : "Get Recommendations"}
                 </button>
             </div>
 

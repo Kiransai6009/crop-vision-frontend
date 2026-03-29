@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      predictions: {
+        Row: {
+          id: string
+          user_id: string
+          crop: string
+          ndvi_value: number
+          predicted_yield: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          crop: string
+          ndvi_value: number
+          predicted_yield: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          crop?: string
+          ndvi_value?: number
+          predicted_yield?: number
+          created_at?: string
+        }
+        Relationships: []
+      }
       faq: {
         Row: {
           answer: string
