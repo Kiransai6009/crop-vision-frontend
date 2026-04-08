@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { motion } from "framer-motion";
-import { Lock, Leaf, Loader2, ArrowLeft, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { Lock, Leaf, Loader2, ArrowLeft, ShieldCheck, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { lazy, Suspense } from "react";
 
@@ -13,6 +13,8 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -108,13 +110,20 @@ const ResetPassword = () => {
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
                     <input 
-                      type="password" 
-                      className={inputClass} 
+                      type={showPassword ? "text" : "password"} 
+                      className={`${inputClass} pr-12`} 
                       placeholder="••••••••" 
                       value={password} 
                       onChange={(e) => setPassword(e.target.value)} 
                       required 
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#00FF87] opacity-60 hover:opacity-100 transition-opacity focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 
@@ -123,13 +132,20 @@ const ResetPassword = () => {
                   <div className="relative">
                     <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
                     <input 
-                      type="password" 
-                      className={inputClass} 
+                      type={showConfirmPassword ? "text" : "password"} 
+                      className={`${inputClass} pr-12`} 
                       placeholder="••••••••" 
                       value={confirmPassword} 
                       onChange={(e) => setConfirmPassword(e.target.value)} 
                       required 
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#00FF87] opacity-60 hover:opacity-100 transition-opacity focus:outline-none"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 
