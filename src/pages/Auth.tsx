@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence } from "framer-motion";
-import { Satellite, Mail, Lock, User, ArrowRight, Leaf, Sprout, Loader2, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Satellite, Mail, Lock, User, ArrowRight, Leaf, Sprout, Loader2, AlertCircle, Eye, EyeOff, Smartphone, Hash, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
 import { lazy, Suspense } from "react";
 
@@ -11,13 +11,18 @@ const ParticleBackground = lazy(() => import("../components/ParticleBackground")
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
+  const [loginMethod, setLoginMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("+91 ");
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
+  const [otpStep, setOtpStep] = useState<'phone' | 'otp'>('phone');
+  const [resendTimer, setResendTimer] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,6 +37,14 @@ const Auth = () => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendTimer > 0) {
+      timer = setTimeout(() => setResendTimer((prev) => prev - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendTimer]);
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -58,9 +71,87 @@ const Auth = () => {
     });
   }, [navigate]);
 
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanPhone = phoneNumber.replace(/\s/g, "");
+    if (cleanPhone.length < 10) {
+      setErrorMsg("Please enter a valid phone number with country code.");
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ phone: cleanPhone });
+      if (error) throw error;
+      
+      toast.success("Verification code transmitted to " + phoneNumber);
+      setOtpStep('otp');
+      setResendTimer(30);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Failed to send OTP.");
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const otpString = otp.join("");
+    if (otpString.length < 6) {
+      setErrorMsg("Please enter the 6-digit verification code.");
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: phoneNumber.replace(/\s/g, ""),
+        token: otpString,
+        type: 'sms'
+      });
+      if (error) throw error;
+
+      toast.success("Phone verified. Redirecting to terminal...");
+      navigate("/dashboard");
+    } catch (err: any) {
+      setErrorMsg(err.message || "Invalid verification code.");
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpInput = (value: string, index: number) => {
+    if (isNaN(Number(value))) return;
+    const newOtp = [...otp];
+    newOtp[index] = value.substring(value.length - 1);
+    setOtp(newOtp);
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      prevInput?.focus();
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (loginMethod === 'phone') {
+      if (otpStep === 'phone') return handleSendOtp(e);
+      return handleVerifyOtp(e);
+    }
+
     // Form Validation Before API Call
     if (!email || !email.includes('@')) {
       setErrorMsg("Please enter a valid email address.");
@@ -218,35 +309,60 @@ const Auth = () => {
           <div className="text-center mb-10">
             <AnimatePresence mode="wait">
               <motion.div
-                key={isLogin ? "login" : "signup"}
+                key={loginMethod === 'email' ? (isLogin ? "login" : "signup") : "phone"}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                <h2 className="font-display text-2xl md:text-3xl font-black text-white tracking-tight mb-2">{isLogin ? "Welcome" : "Join Crop Insight"}</h2>
+                <h2 className="font-display text-2xl md:text-3xl font-black text-white tracking-tight mb-2">
+                  {loginMethod === 'phone' ? "Secure Access" : isLogin ? "Welcome" : "Join Crop Insight"}
+                </h2>
                 <p className="text-[10px] md:text-xs font-medium uppercase tracking-widest" style={{ color: "rgba(150,230,180,0.6)" }}>
-                  {isLogin ? "Sign in to continue" : "Create an account to start monitoring your crops"}
+                   {loginMethod === 'phone' 
+                     ? (otpStep === 'phone' ? "Sign in via mobile verification" : "Enter the verification code") 
+                     : isLogin ? "Sign in to continue" : "Create an account to start monitoring your crops"}
                 </p>
               </motion.div>
             </AnimatePresence>
           </div>
 
           <div className="flex p-1 rounded-2xl mb-10 bg-[#00FF87]/5 border border-[#00FF87]/10 backdrop-blur-xl">
-            {["Sign In", "Sign Up"].map((tab, i) => (
+            {[
+              { id: 'email', label: 'Email Login' },
+              { id: 'phone', label: 'Phone Login' }
+            ].map((method) => (
               <button
-                key={tab}
-                onClick={() => { setIsLogin(i === 0); setErrorMsg(null); }}
-                className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${
-                  isLogin === (i === 0)
+                key={method.id}
+                onClick={() => { setLoginMethod(method.id as 'email' | 'phone'); setErrorMsg(null); setOtpStep('phone'); }}
+                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                  loginMethod === method.id
                     ? "bg-[#00FF87] text-[#050D0A] shadow-xl shadow-[#00FF87]/20"
                     : "text-gray-500 hover:text-white"
                 }`}
               >
-                {tab}
+                {method.label}
               </button>
             ))}
           </div>
+
+          {loginMethod === 'email' && (
+            <div className="flex p-1 rounded-2xl mb-8 bg-white/5 border border-white/5">
+              {["Sign In", "Sign Up"].map((tab, i) => (
+                <button
+                  key={tab}
+                  onClick={() => { setIsLogin(i === 0); setErrorMsg(null); }}
+                  className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                    isLogin === (i === 0)
+                      ? "bg-white/10 text-white"
+                      : "text-gray-500 hover:text-white"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          )}
 
           {errorMsg && (
             <motion.div 
@@ -260,73 +376,134 @@ const Auth = () => {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <AnimatePresence>
-              {!isLogin && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <Label className="text-xs font-black uppercase tracking-widest mb-2 block" style={{ color: "rgba(150,230,180,0.7)" }}>Display Name</Label>
+            {loginMethod === 'email' ? (
+              <>
+                <AnimatePresence>
+                  {!isLogin && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <Label className="text-xs font-black uppercase tracking-widest mb-2 block" style={{ color: "rgba(150,230,180,0.7)" }}>Display Name</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
+                        <input
+                          className={inputClass}
+                          placeholder="e.g. Farmer John"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest mb-2 block" style={{ color: "rgba(150,230,180,0.7)" }}>Email Address</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
-                    <input
-                      className={inputClass}
-                      placeholder="e.g. Farmer John"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                    />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
+                    <input type="email" className={inputClass} placeholder="operator@cropvision.io" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-black uppercase tracking-widest mb-2 block" style={{ color: "rgba(150,230,180,0.7)" }}>Email Address</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
-                <input type="email" className={inputClass} placeholder="operator@cropvision.io" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <Label className="text-xs font-bold uppercase tracking-widest block" style={{ color: "rgba(150,230,180,0.7)" }}>Password</Label>
-                {isLogin && (
-                  <button 
-                    type="button"
-                    onClick={() => navigate("/forgot-password")}
-                    className="text-xs font-black text-[#00FF87] hover:underline uppercase tracking-widest opacity-70 hover:opacity-100"
-                  >
-                    Forgot Password?
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs font-bold uppercase tracking-widest block" style={{ color: "rgba(150,230,180,0.7)" }}>Password</Label>
+                    {isLogin && (
+                      <button 
+                        type="button"
+                        onClick={() => navigate("/forgot-password")}
+                        className="text-xs font-black text-[#00FF87] hover:underline uppercase tracking-widest opacity-70 hover:opacity-100"
+                      >
+                        Forgot Password?
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      className={`${inputClass} pr-12`} 
+                      placeholder="••••••••" 
+                      value={password} 
+                      onChange={(e) => setPassword(e.target.value)} 
+                      required 
+                      minLength={6} 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#00FF87] opacity-60 hover:opacity-100 transition-opacity focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-8">
+                {otpStep === 'phone' ? (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black uppercase tracking-widest mb-2 block" style={{ color: "rgba(150,230,180,0.7)" }}>Phone Number</Label>
+                    <div className="relative">
+                      <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
+                      <input 
+                        type="tel" 
+                        className={inputClass} 
+                        placeholder="+91 9876543210" 
+                        value={phoneNumber} 
+                        onChange={(e) => setPhoneNumber(e.target.value)} 
+                        required 
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex justify-between gap-2">
+                      {otp.map((digit, idx) => (
+                        <input
+                          key={idx}
+                          id={`otp-${idx}`}
+                          type="text"
+                          maxLength={1}
+                          value={digit}
+                          onChange={(e) => handleOtpInput(e.target.value, idx)}
+                          onKeyDown={(e) => handleOtpKeyDown(e, idx)}
+                          className="w-12 h-14 bg-white/5 border border-white/10 rounded-xl text-center text-xl font-black text-[#00FF87] focus:border-[#00FF87] focus:ring-1 focus:ring-[#00FF87]/20 transition-all outline-none"
+                        />
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between px-2">
+                       <button 
+                         type="button"
+                         onClick={() => setOtpStep('phone')}
+                         className="text-[10px] font-black text-white/40 hover:text-white uppercase tracking-widest transition-colors flex items-center gap-1"
+                       >
+                         Change Number
+                       </button>
+                       <button 
+                         type="button"
+                         disabled={resendTimer > 0}
+                         onClick={handleSendOtp}
+                         className="text-[10px] font-black text-[#00FF87] hover:underline uppercase tracking-widest disabled:opacity-40 flex items-center gap-1"
+                       >
+                         {resendTimer > 0 ? (
+                           `Resend in ${resendTimer}s`
+                         ) : (
+                           <><RefreshCcw className="w-3 h-3" /> Resend Code</>
+                         )}
+                       </button>
+                    </div>
+                  </div>
                 )}
               </div>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
-                <input 
-                  type={showPassword ? "text" : "password"} 
-                  className={`${inputClass} pr-12`} 
-                  placeholder="••••••••" 
-                  value={password} 
-                  onChange={(e) => setPassword(e.target.value)} 
-                  required 
-                  minLength={6} 
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#00FF87] opacity-60 hover:opacity-100 transition-opacity focus:outline-none"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
+            )}
 
             <button
               type="submit"
-              disabled={loading || (!isLogin && cooldown > 0)}
+              disabled={loading || (loginMethod === 'email' && !isLogin && cooldown > 0)}
               className="w-full h-14 rounded-2xl bg-[#00FF87] text-[#050D0A] font-black tracking-[0.2em] transform active:scale-95 transition-all shadow-2xl shadow-[#00FF87]/20 flex items-center justify-center gap-3 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed"
             >
               {loading ? (
@@ -334,11 +511,13 @@ const Auth = () => {
               ) : (
                 <>
                   <span>
-                    {isLogin 
-                      ? "SIGN IN" 
-                      : cooldown > 0 
-                        ? `WAIT ${cooldown}s` 
-                        : "CREATE ACCOUNT"}
+                    {loginMethod === 'phone' 
+                      ? (otpStep === 'phone' ? "SEND OTP" : "VERIFY & SIGN IN")
+                      : isLogin 
+                        ? "SIGN IN" 
+                        : cooldown > 0 
+                          ? `WAIT ${cooldown}s` 
+                          : "CREATE ACCOUNT"}
                   </span>
                   <ArrowRight className="w-5 h-5" />
                 </>
