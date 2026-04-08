@@ -1,14 +1,16 @@
 import "leaflet/dist/leaflet.css";
-import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
-import { MapPin } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Polygon } from "react-leaflet";
+import { MapPin, Activity, Droplets } from "lucide-react";
+
+import { DISTRICT_COORDS } from "@/hooks/useLiveWeather";
+import { useLocation } from "@/hooks/useLocation";
 
 interface MapProps {
   district: string;
   state: string;
 }
 
-// Custom hook to re-center map when district/state changes
 const RecenterMap = ({ lat, lon }: { lat: number; lon: number }) => {
   const map = useMap();
   useEffect(() => {
@@ -17,50 +19,140 @@ const RecenterMap = ({ lat, lon }: { lat: number; lon: number }) => {
   return null;
 };
 
+// Generate deterministic random offsets to simulate farm nodes relative to center
+const generateNodes = (lat: number, lon: number) => {
+  return Array.from({ length: 5 }).map((_, i) => {
+    const offsetLat = (Math.sin(lat * 100 + i) * 0.15) - 0.075;
+    const offsetLon = (Math.cos(lon * 100 + i) * 0.15) - 0.075;
+    const health = Math.random();
+    return {
+      id: `node-${i}`,
+      lat: lat + offsetLat,
+      lon: lon + offsetLon,
+      ndvi: 0.3 + (health * 0.5),
+      moisture: 40 + (health * 50),
+      status: health > 0.6 ? "Healthy" : health > 0.3 ? "Moderate" : "Stress"
+    };
+  });
+};
+
 export const MapVisualization = ({ district, state }: MapProps) => {
-  // We mock the latitude and longitude based on input changes just for visualization
-  const [coords, setCoords] = useState<[number, number]>([19.9975, 73.7898]); // default Nasik, MH
+  const { lat: userLat, lon: userLon, city } = useLocation();
+  const [coords, setCoords] = useState<[number, number]>([18.5204, 73.8567]); 
 
   useEffect(() => {
-    // Simulated coordinate shift to make map interactive when user selects different districts
-    setCoords([19.0 + Math.random() * 5, 73.0 + Math.random() * 5]);
-  }, [district, state]);
+    const lookup = DISTRICT_COORDS[district];
+    if (district === city && userLat && userLon) {
+      setCoords([userLat, userLon]);
+    } else if (lookup) {
+      setCoords([lookup.lat, lookup.lon]);
+    } else if (userLat && userLon) {
+      setCoords([userLat, userLon]);
+    } else {
+      setCoords([19.0 + Math.random() * 2, 73.0 + Math.random() * 2]);
+    }
+  }, [district, state, userLat, userLon, city]);
+
+  // Compute nodes and farm boundaries when coords change
+  const { nodes, boundingBox } = useMemo(() => {
+    const freshNodes = generateNodes(coords[0], coords[1]);
+    const dLat = 0.2;
+    const dLon = 0.25;
+    const boundingBox: [number, number][] = [
+      [coords[0] - dLat, coords[1] - dLon],
+      [coords[0] + dLat, coords[1] - dLon],
+      [coords[0] + dLat + 0.1, coords[1] + dLon - 0.1],
+      [coords[0] - dLat + 0.05, coords[1] + dLon]
+    ];
+    return { nodes: freshNodes, boundingBox };
+  }, [coords[0], coords[1]]);
 
   return (
-    <div className="p-6 rounded-3xl glass-card border border-border/40 shadow-lg relative overflow-hidden h-[400px]">
-      <div className="absolute top-6 left-6 z-[400] bg-background/80 backdrop-blur-md px-4 py-2 rounded-xl border border-border/50 flex items-center gap-2 shadow-lg">
-        <MapPin className="w-4 h-4 text-primary" />
-        <span className="font-semibold text-sm">Geo Visualization: {district}</span>
+    <div className="p-6 rounded-4xl bg-card/20 border border-border/10 shadow-3xl relative overflow-hidden h-[500px]">
+      <div className="absolute top-6 left-6 z-[400] bg-background/80 backdrop-blur-xl px-5 py-3 rounded-2xl border border-border/20 flex flex-col gap-1 shadow-2xl">
+        <div className="flex items-center gap-2">
+           <MapPin className="w-5 h-5 text-green-500" />
+           <span className="font-display font-black text-foreground text-lg tracking-tighter">GeoVisualization</span>
+        </div>
+        <p className="text-xs font-black text-muted-foreground/60 tracking-widest uppercase ml-7">Active ROI: {district}, {state}</p>
       </div>
 
-      <div className="w-full h-full rounded-2xl overflow-hidden mt-2 relative z-10 border border-border/50">
+      <div className="w-full h-full rounded-3xl overflow-hidden mt-2 relative z-10 border border-border/10 shadow-[inset_0_0_100px_rgba(0,0,0,0.5)]">
         <MapContainer 
           center={coords} 
-          zoom={8} 
-          style={{ height: '100%', width: '100%', zIndex: 10 }}
+          zoom={9} 
+          style={{ height: '100%', width: '100%', zIndex: 10, background: '#090a0f' }}
           zoomControl={false}
           attributionControl={false}
         >
-          {/* Dark theme tile layer from CartoDB */}
+          {/* Dark theme premium map tiles */}
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution="&copy; OpenStreetMap contributors &copy; CARTO"
+            url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
           />
           
           <RecenterMap lat={coords[0]} lon={coords[1]} />
           
+          <Polygon positions={boundingBox} pathOptions={{ color: '#22C55E', weight: 2, dashArray: '5, 10', fillColor: '#22C55E', fillOpacity: 0.05 }} />
+
+          {/* Main Focus Ring */}
           <CircleMarker
             center={coords}
-            pathOptions={{ color: 'hsl(188, 100%, 44%)', fillColor: 'hsl(188, 100%, 44%)', fillOpacity: 0.4 }}
-            radius={40}
+            pathOptions={{ color: 'rgba(34,197,94,0.3)', fillColor: 'none', weight: 1 }}
+            radius={80}
           />
+
+          {nodes.map(node => (
+             <CircleMarker
+               key={node.id}
+               center={[node.lat, node.lon]}
+               pathOptions={{ 
+                 color: node.status === 'Healthy' ? '#22C55E' : node.status === 'Moderate' ? '#F59E0B' : '#EF4444', 
+                 fillColor: node.status === 'Healthy' ? '#22C55E' : node.status === 'Moderate' ? '#F59E0B' : '#EF4444', 
+                 fillOpacity: 0.8,
+                 weight: 4
+               }}
+               radius={6}
+             >
+               <Popup className="premium-map-popup">
+                 <div className="p-3 bg-background border border-border/20 rounded-xl shadow-2xl flex flex-col gap-2 min-w-[200px] -m-2">
+                   <div className="flex items-center justify-between border-b border-border/10 pb-2">
+                     <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">Node {node.id.split('-')[1]}</span>
+                     <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md ${
+                        node.status === 'Healthy' ? 'bg-green-500/10 text-green-500' : 
+                        node.status === 'Moderate' ? 'bg-orange-500/10 text-orange-500' : 'bg-red-500/10 text-red-500'
+                     }`}>
+                       {node.status}
+                     </span>
+                   </div>
+                   <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center gap-1.5"><Activity className="w-3 h-3 text-blue-400" /><span className="text-xs font-bold">NDVI</span></div>
+                      <span className="text-xs font-black">{node.ndvi.toFixed(2)}</span>
+                   </div>
+                   <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5"><Droplets className="w-3 h-3 text-blue-400" /><span className="text-xs font-bold">Moisture</span></div>
+                      <span className="text-xs font-black">{node.moisture.toFixed(0)}%</span>
+                   </div>
+                 </div>
+               </Popup>
+             </CircleMarker>
+          ))}
         </MapContainer>
         
-        {/* Overlays for styling */}
-        <div className="absolute top-0 right-0 p-4 z-[400] flex flex-col gap-2 pointer-events-none">
-          <div className="flex items-center gap-2 bg-background/80 backdrop-blur border border-border/50 px-3 py-1.5 rounded-full text-[10px] font-medium text-white/80">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            Analyzing Area
+        {/* Analytics Overlays */}
+        <div className="absolute bottom-6 right-6 z-[400] flex flex-col gap-3 pointer-events-none">
+          <div className="flex flex-col gap-1 bg-background/90 backdrop-blur-md border border-border/20 p-4 rounded-2xl shadow-2xl">
+             <div className="flex items-center justify-between gap-4 mb-2">
+                <span className="text-[10px] font-black tracking-widest uppercase text-muted-foreground/80">Sensor Grid</span>
+                <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+             </div>
+             <div className="flex items-center justify-between gap-6">
+                <span className="text-xs font-bold text-foreground">Active Nodes</span>
+                <span className="text-sm font-black text-green-500">5 / 5</span>
+             </div>
+             <div className="flex items-center justify-between gap-6">
+                <span className="text-xs font-bold text-foreground">Coverage Area</span>
+                <span className="text-sm font-black text-foreground">14.2 km²</span>
+             </div>
           </div>
         </div>
       </div>

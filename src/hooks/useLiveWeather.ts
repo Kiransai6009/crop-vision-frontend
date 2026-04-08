@@ -165,13 +165,15 @@ const estimateNDVI = (
 };
 
 /* ── Main hook ───────────────────────────────────────────────────────── */
-export const useLiveWeather = (initialDistrict = "Hyderabad") => {
+export const useLiveWeather = (initialDistrict = "Hyderabad", initialCoords?: {lat: number, lon: number, state: string}) => {
     const [district, setDistrictState] = useState(initialDistrict);
+    const [coordsState, setCoordsState] = useState(initialCoords);
+    
     const [data, setData] = useState<LiveWeatherData>({
         district,
-        state: DISTRICT_COORDS[district]?.state ?? "",
-        lat: DISTRICT_COORDS[district]?.lat ?? 17.4,
-        lon: DISTRICT_COORDS[district]?.lon ?? 78.5,
+        state: coordsState?.state || DISTRICT_COORDS[district]?.state || "",
+        lat: coordsState?.lat || DISTRICT_COORDS[district]?.lat || 17.4,
+        lon: coordsState?.lon || DISTRICT_COORDS[district]?.lon || 78.5,
         current: { temp: 0, humidity: 0, rainfall: 0, wind: 0, uvIndex: 0, feelsLike: 0, condition: "Loading…", icon: "🌡", updatedAt: "" },
         forecast: [],
         ndvi: 0.5,
@@ -180,11 +182,11 @@ export const useLiveWeather = (initialDistrict = "Hyderabad") => {
         lastFetch: 0,
     });
 
-    const fetchWeather = useCallback(async (d: string) => {
-        const coords = DISTRICT_COORDS[d];
+    const fetchWeather = useCallback(async (d: string, extraCoords?: {lat: number, lon: number, state: string}) => {
+        const coords = extraCoords || DISTRICT_COORDS[d];
         if (!coords) return;
 
-        setData(prev => ({ ...prev, status: "loading", district: d, state: coords.state }));
+        setData(prev => ({ ...prev, status: "loading", district: d, state: coords.state || "" }));
 
         try {
             const url =
@@ -243,7 +245,7 @@ export const useLiveWeather = (initialDistrict = "Hyderabad") => {
             const ndviLabel = ndvi > 0.6 ? "Healthy" : ndvi >= 0.3 ? "Moderate" : "Poor";
 
             setData({
-                district: d, state: coords.state, lat: coords.lat, lon: coords.lon,
+                district: d, state: coords.state || "", lat: coords.lat, lon: coords.lon,
                 current, forecast, ndvi, ndviLabel,
                 status: "live", lastFetch: Date.now(),
             });
@@ -260,15 +262,25 @@ export const useLiveWeather = (initialDistrict = "Hyderabad") => {
 
     /* Initial fetch + refresh every 10 minutes */
     useEffect(() => {
-        fetchWeather(district);
-        const timer = setInterval(() => fetchWeather(district), 10 * 60 * 1000);
+        fetchWeather(district, coordsState);
+        const timer = setInterval(() => fetchWeather(district, coordsState), 10 * 60 * 1000);
         return () => clearInterval(timer);
-    }, [district, fetchWeather]);
+    }, [district, coordsState, fetchWeather]);
 
     const setDistrict = (d: string) => {
         setDistrictState(d);
+        setCoordsState(undefined); // Reset custom coords
         fetchWeather(d);
     };
+    
+    // Auto-update if initialDistrict/initialCoords change (e.g. from location load)
+    useEffect(() => {
+       if (initialCoords && initialCoords.lat !== data.lat) {
+          setDistrictState(initialDistrict);
+          setCoordsState(initialCoords);
+          fetchWeather(initialDistrict, initialCoords);
+       }
+    }, [initialDistrict, initialCoords]);
 
-    return { data, setDistrict, refresh: () => fetchWeather(district) };
+    return { data, setDistrict, refresh: () => fetchWeather(district, coordsState) };
 };

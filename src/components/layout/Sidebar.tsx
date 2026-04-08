@@ -52,7 +52,7 @@ const navSections: NavSection[] = [
 export const Sidebar = () => {
   const { isExpanded, isMobile, isOpen, setIsOpen, toggleSidebar } = useSidebar();
   const location = useLocation();
-  const { user, signOut } = useUser();
+  const { user, profile, signOut } = useUser();
 
   return (
     <>
@@ -111,8 +111,8 @@ export const Sidebar = () => {
                 <User className="w-4.5 h-4.5" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-black text-foreground truncate ">{user?.email?.split('@')[0] || "Farmer"}</span>
-                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter opacity-60">Verified Admin</span>
+                <span className="text-xs font-black text-foreground truncate ">{profile?.display_name || user?.email?.split('@')[0] || "Farmer"}</span>
+                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter opacity-60">{profile?.role === 'admin' ? 'Verified Admin' : 'Precision Farmer'}</span>
               </div>
             </div>
           </div>

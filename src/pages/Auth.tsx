@@ -16,7 +16,40 @@ const Auth = () => {
   const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [cooldown, setCooldown] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const storedCooldown = localStorage.getItem("signupCooldown");
+    if (storedCooldown) {
+      const expirationTime = parseInt(storedCooldown, 10);
+      const currentTime = new Date().getTime();
+      if (expirationTime > currentTime) {
+        setCooldown(Math.ceil((expirationTime - currentTime) / 1000));
+      } else {
+        localStorage.removeItem("signupCooldown");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (cooldown > 0) {
+      timer = setTimeout(() => {
+        setCooldown((prev) => prev - 1);
+      }, 1000);
+    } else if (cooldown === 0 && localStorage.getItem("signupCooldown")) {
+      localStorage.removeItem("signupCooldown");
+      toast.success("Cooldown complete. You may now retry authentication.");
+    }
+    return () => clearTimeout(timer);
+  }, [cooldown]);
+
+  const startCooldown = () => {
+    const expirationTime = new Date().getTime() + 30000; // 30 seconds
+    localStorage.setItem("signupCooldown", expirationTime.toString());
+    setCooldown(30);
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -26,20 +59,50 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Form Validation Before API Call
+    if (!email || !email.includes('@')) {
+      setErrorMsg("Please enter a valid email address.");
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMsg("Password must be at least 6 characters long.");
+      return;
+    }
+
+    if (!isLogin && cooldown > 0) {
+      setErrorMsg(`Too many attempts. Please wait ${cooldown} seconds and try again.`);
+      return;
+    }
+
     setLoading(true);
     setErrorMsg(null);
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ 
+        const { data, error } = await supabase.auth.signInWithPassword({ 
           email: email.trim(), 
           password 
         });
-        if (error) throw error;
+        
+        if (error) {
+          if (error.status === 429 || error.message.toLowerCase().includes("rate limit") || error.message.toLowerCase().includes("too many requests")) {
+            throw new Error("Too many authentication attempts. Please wait before trying again.");
+          }
+          throw error;
+        }
+
+        // Check if user email is confirmed before login (Task #7)
+        if (data.user && !data.user.email_confirmed_at) {
+           // Force sign out just in case supabase allowed a partial session
+           await supabase.auth.signOut();
+           throw new Error("Please confirm your email address before logging in.");
+        }
+
         toast.success("Authentication successful. Redirecting to terminal...");
         navigate("/dashboard");
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email: email.trim(),
           password,
           options: {
@@ -47,15 +110,21 @@ const Auth = () => {
             emailRedirectTo: `${window.location.origin}/auth`,
           },
         });
-        if (error) throw error;
-        toast.success("Verification link transmitted. Please check your inbox.");
+        
+        startCooldown();
+        
+        if (error) {
+          if (error.status === 429 || error.message.toLowerCase().includes("rate limit") || error.message.toLowerCase().includes("too many requests")) {
+            throw new Error("Too many attempts. Please wait 30 seconds and try again.");
+          }
+          throw error;
+        }
+        
+        toast.success("Verification link transmitted. Please check your inbox.", { duration: 5000 });
       }
     } catch (err: any) {
-      console.error("Auth Exception Details:", err);
-      
       let message = err.message || "An unexpected error occurred during transmission.";
       
-      // Specifically handle the "Failed to fetch" (DNS/Handshake issues)
       if (err.message === "Failed to fetch") {
         message = "Network Error: Could not establish a handshake with Supabase Nodes. Double-check your Project ID in .env (" + import.meta.env.VITE_SUPABASE_URL?.split('//')[1]?.split('.')[0] + ") and ensure your project is not PAUSED or DELETED in the Supabase Dashboard.";
       }
@@ -97,12 +166,12 @@ const Auth = () => {
           className="hidden md:flex flex-col justify-center gap-8"
         >
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#00FF87] to-[#60EFFF] flex items-center justify-center pulse-glow">
-              <Satellite className="w-7 h-7 text-[#050D0A]" />
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#10B981] to-[#34D399] flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+              <Leaf className="w-7 h-7 text-[#050D0A]" />
             </div>
             <div>
-              <div className="font-display font-black text-2xl text-white">Crop Insight</div>
-              <div className="text-xs text-[#00FF87] font-bold tracking-widest uppercase">Intel Hub</div>
+              <div className="font-display font-black text-2xl text-white tracking-tight">Crop Insight</div>
+              <div className="text-xs text-[#10B981] font-bold tracking-widest uppercase">Smart Agriculture</div>
             </div>
           </div>
 
@@ -142,7 +211,7 @@ const Auth = () => {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className="glass-card rounded-4xl p-8 md:p-12 relative overflow-hidden"
+          className="glass-card rounded-[32px] p-6 md:p-10 relative overflow-hidden flex flex-col justify-center"
           style={{ border: "1px solid rgba(0,255,135,0.18)", boxShadow: "0 0 80px rgba(0,255,135,0.08), 0 32px 64px rgba(0,0,0,0.6)" }}
         >
           <div className="text-center mb-10">
@@ -154,9 +223,9 @@ const Auth = () => {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                <h2 className="font-display text-3xl font-black text-white tracking-widest uppercase mb-2">{isLogin ? "Welcome" : "Initiate Unit"}</h2>
-                <p className="text-xs font-black uppercase tracking-widest" style={{ color: "rgba(150,230,180,0.55)" }}>
-                  {isLogin ? "Neural uplink active — Authenticate to proceed" : "Synthesize new farmer profile for full access"}
+                <h2 className="font-display text-2xl md:text-3xl font-black text-white tracking-tight mb-2">{isLogin ? "Welcome" : "Join Crop Insight"}</h2>
+                <p className="text-[10px] md:text-xs font-medium uppercase tracking-widest" style={{ color: "rgba(150,230,180,0.6)" }}>
+                  {isLogin ? "Sign in to continue" : "Create an account to start monitoring your crops"}
                 </p>
               </motion.div>
             </AnimatePresence>
@@ -167,7 +236,7 @@ const Auth = () => {
               <button
                 key={tab}
                 onClick={() => { setIsLogin(i === 0); setErrorMsg(null); }}
-                className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300 ${
                   isLogin === (i === 0)
                     ? "bg-[#00FF87] text-[#050D0A] shadow-xl shadow-[#00FF87]/20"
                     : "text-gray-500 hover:text-white"
@@ -198,9 +267,9 @@ const Auth = () => {
                   exit={{ opacity: 0, height: 0 }}
                   className="overflow-hidden"
                 >
-                  <Label className="text-[10px] font-black uppercase tracking-widest mb-2 block" style={{ color: "rgba(150,230,180,0.7)" }}>Display Name</Label>
+                  <Label className="text-xs font-black uppercase tracking-widest mb-2 block" style={{ color: "rgba(150,230,180,0.7)" }}>Display Name</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-3.5 h-4 w-4 text-[#00FF87] opacity-60" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
                     <input
                       className={inputClass}
                       placeholder="e.g. Farmer John"
@@ -213,42 +282,48 @@ const Auth = () => {
             </AnimatePresence>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest mb-2 block" style={{ color: "rgba(150,230,180,0.7)" }}>Email Address</Label>
+              <Label className="text-xs font-black uppercase tracking-widest mb-2 block" style={{ color: "rgba(150,230,180,0.7)" }}>Email Address</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-3.5 h-4 w-4 text-[#00FF87] opacity-60" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
                 <input type="email" className={inputClass} placeholder="operator@cropvision.io" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest block" style={{ color: "rgba(150,230,180,0.7)" }}>Secure Password</Label>
+                <Label className="text-xs font-bold uppercase tracking-widest block" style={{ color: "rgba(150,230,180,0.7)" }}>Password</Label>
                 {isLogin && (
                   <button 
                     type="button"
                     onClick={() => navigate("/forgot-password")}
-                    className="text-[10px] font-black text-[#00FF87] hover:underline uppercase tracking-widest opacity-70 hover:opacity-100"
+                    className="text-xs font-black text-[#00FF87] hover:underline uppercase tracking-widest opacity-70 hover:opacity-100"
                   >
-                    Forgot Key?
+                    Forgot Password?
                   </button>
                 )}
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-3.5 h-4 w-4 text-[#00FF87] opacity-60" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#00FF87] opacity-60" />
                 <input type="password" className={inputClass} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
               </div>
             </div>
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full h-14 rounded-2xl bg-[#00FF87] text-[#050D0A] font-black tracking-[0.2em] transform active:scale-95 transition-all shadow-2xl shadow-[#00FF87]/20 flex items-center justify-center gap-3 disabled:opacity-40 disabled:scale-100"
+              disabled={loading || (!isLogin && cooldown > 0)}
+              className="w-full h-14 rounded-2xl bg-[#00FF87] text-[#050D0A] font-black tracking-[0.2em] transform active:scale-95 transition-all shadow-2xl shadow-[#00FF87]/20 flex items-center justify-center gap-3 disabled:opacity-40 disabled:scale-100 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <Loader2 className="w-6 h-6 animate-spin" />
               ) : (
                 <>
-                  <span>{isLogin ? "SIGN IN" : "CREATE ACCOUNT"}</span>
+                  <span>
+                    {isLogin 
+                      ? "SIGN IN" 
+                      : cooldown > 0 
+                        ? `WAIT ${cooldown}s` 
+                        : "CREATE ACCOUNT"}
+                  </span>
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
@@ -256,9 +331,9 @@ const Auth = () => {
           </form>
 
           <p className="text-center text-xs mt-10 font-bold uppercase tracking-widest" style={{ color: "rgba(150,230,180,0.4)" }}>
-            {isLogin ? "Operator not registered?" : "Already within the registry?"}{" "}
+            {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
             <button onClick={() => setIsLogin(!isLogin)} className="text-[#00FF87] hover:underline decoration-2 transition-all">
-              {isLogin ? "Sign up" : "Sign in"}
+              {isLogin ? "Register" : "Sign in"}
             </button>
           </p>
         </motion.div>

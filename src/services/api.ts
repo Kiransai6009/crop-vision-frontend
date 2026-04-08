@@ -1,4 +1,5 @@
 import axios from "axios";
+import { supabase } from "@/integrations/supabase/client";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -9,18 +10,26 @@ const api = axios.create({
   },
 });
 
-// Add a request interceptor to add Supabase Token
-api.interceptors.request.use((config) => {
-  const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || "udylcriijgnkwxngtgoa";
-  const sessionString = localStorage.getItem(`sb-${projectId}-auth-token`);
+// Add a request interceptor to attach the Supabase JWT Bearer token
+api.interceptors.request.use(async (config) => {
   try {
-    const session = sessionString ? JSON.parse(sessionString) : null;
-    const token = session?.access_token;
+    // Strategy 1: Get token directly from the supabase client session (most reliable)
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`;
+      return config;
+    }
+
+    // Strategy 2: Fallback — read from localStorage using correct project ID
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || "ckgevpkjjxlrvfuhlyaw";
+    const sessionString = localStorage.getItem(`sb-${projectId}-auth-token`);
+    const session2 = sessionString ? JSON.parse(sessionString) : null;
+    const token = session2?.access_token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
   } catch (e) {
-    console.warn("Failed to parse auth session", e);
+    console.warn("[api.ts] Failed to attach auth token:", e);
   }
   return config;
 });
@@ -32,8 +41,7 @@ export const yieldService = {
     return response.data;
   },
   getHistory: async () => {
-    // Fetches from /history (Note: App.py has /history at root for last 10)
-    const response = await api.get("/history");
+    const response = await api.get("/api/history");
     return response.data;
   },
   getDashboard: async (lat: number, lon: number, crop: string) => {

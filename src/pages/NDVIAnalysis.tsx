@@ -1,181 +1,271 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
-  TrendingUp, Leaf, TrendingDown, Activity, 
-  HelpCircle, ChevronRight, Share2, Loader2 
+  TrendingUp, Leaf, TrendingDown, Activity, MapPin,
+  Share2, Loader2, Zap, RefreshCw
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { satelliteService } from "@/services/api";
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
+import { useLiveWeather, DISTRICT_COORDS } from "@/hooks/useLiveWeather";
 
-const ndviData = [
-  { month: "Jan", ndvi: 0.21 }, { month: "Feb", ndvi: 0.28 }, { month: "Mar", ndvi: 0.45 },
-  { month: "Apr", ndvi: 0.62 }, { month: "May", ndvi: 0.78 }, { month: "Jun", ndvi: 0.85 },
-  { month: "Jul", ndvi: 0.82 }, { month: "Aug", ndvi: 0.73 }, { month: "Sep", ndvi: 0.58 },
-  { month: "Oct", ndvi: 0.39 }, { month: "Nov", ndvi: 0.27 }, { month: "Dec", ndvi: 0.22 },
-];
+// Build state → districts map from DISTRICT_COORDS
+const stateDistrictsMap = Object.entries(DISTRICT_COORDS).reduce((acc, [dist, info]) => {
+  if (!acc[info.state]) acc[info.state] = [];
+  acc[info.state].push(dist);
+  return acc;
+}, {} as Record<string, string[]>);
+
+const states = Object.keys(stateDistrictsMap).sort();
+
+// Generate a 12-month seasonal NDVI curve from the current live NDVI + seasonal multipliers
+function buildSeasonalTrend(currentNdvi: number, lat: number) {
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  // Tropical latitudes (< 23.5°) have monsoon peak Jun-Sep; temperate have spring peak
+  const isTropical = Math.abs(lat) < 23.5;
+  const monsoonMult = isTropical
+    ? [0.48, 0.52, 0.64, 0.75, 0.82, 0.92, 1.0, 0.97, 0.88, 0.70, 0.56, 0.48]
+    : [0.52, 0.60, 0.80, 0.95, 1.0, 0.93, 0.85, 0.80, 0.70, 0.60, 0.54, 0.50];
+  const peak = Math.max(...monsoonMult);
+  return months.map((month, i) => ({
+    month,
+    ndvi: parseFloat((currentNdvi * monsoonMult[i] / peak).toFixed(3))
+  }));
+}
+
+function getStatusConfig(ndvi: number) {
+  if (ndvi >= 0.75) return { status: "Excellent", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", bar: "bg-emerald-400", pct: 95 };
+  if (ndvi >= 0.60) return { status: "Good",      color: "text-green-500",   bg: "bg-green-500/10",   border: "border-green-500/20",   bar: "bg-green-500",   pct: 78 };
+  if (ndvi >= 0.45) return { status: "Moderate",  color: "text-yellow-400",  bg: "bg-yellow-500/10",  border: "border-yellow-500/20",  bar: "bg-yellow-400",  pct: 58 };
+  if (ndvi >= 0.30) return { status: "Poor",      color: "text-orange-400",  bg: "bg-orange-500/10",  border: "border-orange-500/20",  bar: "bg-orange-400",  pct: 38 };
+  return                   { status: "Critical",  color: "text-red-400",     bg: "bg-red-500/10",     border: "border-red-500/20",     bar: "bg-red-400",     pct: 15 };
+}
 
 const NDVIAnalysis = () => {
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState("Maharashtra");
+  const [district, setDistrictState] = useState(stateDistrictsMap["Maharashtra"][0]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    const fetchNDVI = async () => {
-       try {
-          const res = await satelliteService.getNDVI(18.5204, 73.8567, "2024-01-01", "2024-12-31");
-          setData(res);
-       } catch (err) {
-          console.error("Failed to fetch NDVI", err);
-       } finally {
-          setLoading(false);
-       }
-    };
-    fetchNDVI();
-  }, []);
+  const { data: envData, setDistrict } = useLiveWeather(district);
 
-  const currentNDVI = data?.ndvi || 0.78;
-  const status = currentNDVI > 0.6 ? "Healthy" : currentNDVI >= 0.3 ? "Moderate" : "Poor";
+  const handleStateChange = (newState: string) => {
+    setState(newState);
+    const first = stateDistrictsMap[newState]?.[0] || "";
+    setDistrictState(first);
+    setDistrict(first);
+  };
+
+  const handleDistrictChange = (d: string) => {
+    setDistrictState(d);
+    setDistrict(d);
+  };
+
+  const refresh = () => setRefreshKey(k => k + 1);
+
+  const isLoading = envData.status === "loading";
+  const ndvi = envData.ndvi;
+  const lat  = envData.lat;
+  const cfg  = getStatusConfig(ndvi);
+
+  const trendData = useMemo(() => buildSeasonalTrend(ndvi, lat), [ndvi, lat, refreshKey]);
+  const peakNdvi   = Math.max(...trendData.map(d => d.ndvi));
+  const avgNdvi    = parseFloat((trendData.reduce((s, d) => s + d.ndvi, 0) / 12).toFixed(3));
+  const troughNdvi = Math.min(...trendData.map(d => d.ndvi));
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto pb-10">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-border/10 pb-8 gap-4">
-        <div>
-          <h1 className="font-display text-4xl font-black text-foreground flex items-center gap-3 tracking-tighter">
-            <Leaf className="w-10 h-10 text-green-500" />
-            <span>NDVI Analysis</span>
-          </h1>
-          <p className="text-sm text-muted-foreground font-medium max-w-xl mt-2">
-            Normalized Difference Vegetation Index analysis. Monitoring crop health status through multi-spectral satellite imagery.
-          </p>
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto py-6">
+
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-border/10">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-500 shadow-xl shadow-green-500/10 ring-1 ring-green-500/20">
+            <Leaf className="w-6 h-6" />
+          </div>
+          <div>
+            <h1 className="font-display text-2xl font-black text-foreground tracking-tighter">NDVI Analysis</h1>
+            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Normalized Difference Vegetation Index</p>
+          </div>
         </div>
-        <div className="flex gap-2">
-           <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/40 hover:bg-muted/60 text-xs font-bold border border-border/10 transition-all">
-              <Share2 className="w-3.5 h-3.5" />
-              <span>EXPORT</span>
-           </button>
-           <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-xs font-black text-white shadow-xl shadow-green-500/20 transition-all">
-              <span>{loading ? "SYNCING..." : "REFRESH DATA"}</span>
-           </button>
+
+        {/* District Selector */}
+        <div className="flex items-center gap-3 p-1.5 rounded-3xl bg-muted/20 border border-border/5 backdrop-blur-md shadow-xl">
+          <div className="flex flex-col px-3 border-r border-border/10">
+            <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest">State</span>
+            <select value={state} onChange={e => handleStateChange(e.target.value)}
+              className="bg-transparent border-none appearance-none font-black text-sm text-foreground cursor-pointer outline-none w-28">
+              {states.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col px-3">
+            <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest">District</span>
+            <select value={district} onChange={e => handleDistrictChange(e.target.value)}
+              className="bg-transparent border-none appearance-none font-black text-sm text-foreground cursor-pointer outline-none w-28">
+              {stateDistrictsMap[state]?.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          <div className="flex gap-2 px-2">
+            <button onClick={refresh} className="w-10 h-10 rounded-2xl bg-green-500 text-white flex items-center justify-center shadow-lg shadow-green-500/20 hover:bg-green-600 transition-all">
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button className="w-10 h-10 rounded-2xl bg-muted/40 text-muted-foreground flex items-center justify-center hover:bg-muted/60 transition-all">
+              <Share2 className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        {/* Statistics & Insights */}
-        <div className="lg:col-span-1 space-y-6">
-           <div className="p-8 rounded-3xl bg-card/40 border border-border/10 backdrop-blur-xl relative overflow-hidden group shadow-2xl">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-green-400/5 blur-3xl -mr-10 -mt-10" />
-              <h3 className="text-xs font-black text-muted-foreground/60 uppercase tracking-widest mb-6">Current Health</h3>
-              <div className="flex items-center gap-4 mb-8">
-                 <div className="w-16 h-16 rounded-3xl bg-green-500/10 flex items-center justify-center text-green-500 shadow-2xl shadow-green-500/5 border border-green-500/10 scale-110">
-                    {loading ? <Loader2 className="animate-spin" /> : <Activity className="w-8 h-8" />}
-                 </div>
-                 <div className="flex flex-col">
-                    <span className="text-3xl font-black text-foreground tracking-tighter">{currentNDVI.toFixed(3)}</span>
-                    <span className="text-xs font-bold text-green-500 uppercase tracking-widest">Optimal Range</span>
-                 </div>
-              </div>
+        {/* Left Panel — Live NDVI */}
+        <div className="lg:col-span-1 space-y-5">
 
-              <div className="p-4 rounded-2xl bg-green-500/5 border border-green-500/10 mb-2">
-                 <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">Status</span>
-                    <span className="text-[10px] font-black text-green-500 px-2 py-0.5 rounded-lg bg-green-500/10 uppercase">{status}</span>
-                 </div>
-                 <p className="text-xs text-muted-foreground/80 font-medium leading-relaxed">
-                   Crop biomass and chlorophyll levels are within {currentNDVI > 0.6 ? "top 5%" : "standard ranges"} of historical seasonal averages.
-                 </p>
-              </div>
-           </div>
+          {/* Main NDVI card */}
+          <div className={`p-8 rounded-4xl ${cfg.bg} border ${cfg.border} backdrop-blur-xl shadow-2xl relative overflow-hidden`}>
+            <div className="absolute top-0 right-0 w-40 h-40 bg-green-400/5 blur-3xl -mr-10 -mt-10 pointer-events-none" />
 
-           <div className="space-y-3">
-              {[
-                { label: "Historical Peak", value: data?.peak || "0.89", icon: TrendingUp, color: "text-blue-500", bg: "bg-blue-500/10" },
-                { label: "Seasonal Avg", value: data?.average || "0.62", icon: Leaf, color: "text-green-500", bg: "bg-green-500/10" },
-                { label: "Lowest Record", value: data?.trough || "0.21", icon: TrendingDown, color: "text-orange-500", bg: "bg-orange-500/10" },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-4 rounded-3xl bg-card/20 border border-border/5 hover:bg-card/40 transition-all cursor-pointer">
-                   <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-2xl ${item.bg} ${item.color} flex items-center justify-center`}>
-                        <item.icon className="w-5 h-5" />
-                      </div>
-                      <span className="text-xs font-black text-muted-foreground/60 uppercase tracking-widest">{item.label}</span>
-                   </div>
-                   <span className="text-lg font-black text-foreground tracking-tighter">{item.value}</span>
+            <div className="flex items-center gap-2 mb-6">
+              <div className={`w-2 h-2 rounded-full ${cfg.bar} animate-pulse shadow-lg`} />
+              <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">Live Sensor · {district}</span>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {isLoading ? (
+                <div className="flex flex-col items-center py-6">
+                  <Loader2 className="w-10 h-10 text-green-500 animate-spin mb-3" />
+                  <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">Syncing satellite...</span>
                 </div>
-              ))}
-           </div>
+              ) : (
+                <motion.div key={district + ndvi} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+                  <div className="flex items-end gap-3 mb-2">
+                    <span className="text-6xl font-black text-foreground tracking-tighter">{ndvi.toFixed(3)}</span>
+                  </div>
+                  <span className={`text-sm font-black uppercase tracking-widest ${cfg.color}`}>{cfg.status} Vegetation</span>
+
+                  {/* Health bar */}
+                  <div className="mt-5 h-2 rounded-full bg-muted/30 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${cfg.pct}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
+                      className={`h-full rounded-full ${cfg.bar}`}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-[9px] text-muted-foreground/40 font-black">0.0</span>
+                    <span className="text-[9px] text-muted-foreground/40 font-black">1.0</span>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground/70 font-medium leading-relaxed mt-4 border-t border-border/10 pt-4">
+                    {cfg.status === "Excellent" && "Lush canopy density detected. Chlorophyll absorption at peak seasonal levels."}
+                    {cfg.status === "Good" && "Vegetation biomass within optimal range. Crop growth proceeding well."}
+                    {cfg.status === "Moderate" && "Partial stress detected. Consider checking irrigation and fertilization schedules."}
+                    {cfg.status === "Poor" && "Significant vegetation stress. Crop health requires immediate intervention."}
+                    {cfg.status === "Critical" && "Bare soil or severe distress detected. Immediate field inspection recommended."}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Stats cards */}
+          <div className="space-y-3">
+            {[
+              { label: "Seasonal Peak",   value: isLoading ? "---" : peakNdvi.toFixed(3),   icon: TrendingUp,   color: "text-blue-400",   bg: "bg-blue-500/10" },
+              { label: "Seasonal Avg",    value: isLoading ? "---" : avgNdvi.toFixed(3),     icon: Activity,     color: "text-green-400",  bg: "bg-green-500/10" },
+              { label: "Seasonal Trough", value: isLoading ? "---" : troughNdvi.toFixed(3),  icon: TrendingDown, color: "text-orange-400", bg: "bg-orange-500/10" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center justify-between p-4 rounded-3xl bg-card/20 border border-border/5 hover:bg-card/40 transition-all cursor-pointer group">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-2xl ${item.bg} ${item.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                    <item.icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-black text-muted-foreground/60 uppercase tracking-widest">{item.label}</span>
+                </div>
+                <span className="text-lg font-black text-foreground tracking-tighter">{item.value}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Coordinates badge */}
+          <div className="flex items-center gap-3 p-4 rounded-3xl bg-muted/10 border border-border/5">
+            <MapPin className="w-4 h-4 text-indigo-400 shrink-0" />
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest">GPS Coordinates</span>
+              <span className="text-xs font-black text-foreground">{lat.toFixed(4)}°N, {envData.lon.toFixed(4)}°E</span>
+            </div>
+          </div>
         </div>
 
-        {/* Chart Analysis */}
+        {/* Right Panel — Chart + Insights */}
         <div className="lg:col-span-2 space-y-6">
-           <div className="p-8 rounded-4xl bg-card/30 border border-border/10 backdrop-blur-2xl shadow-3xl shadow-green-500/5 min-h-[400px]">
-              <div className="flex items-center justify-between mb-8">
-                 <div>
-                    <h3 className="font-display font-black text-xl text-foreground tracking-tight">Growth Trend</h3>
-                    <p className="text-xs text-muted-foreground font-medium">NDVI temporal variance over 12 months</p>
-                 </div>
-                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                       <span className="w-3 h-3 rounded-full bg-green-500 shadow-xl shadow-green-500/40" />
-                       <span className="text-[9px] font-bold text-muted-foreground/80 uppercase">Vegetation Index (NDVI)</span>
-                    </div>
-                 </div>
+          
+          {/* Area Chart */}
+          <div className="p-8 rounded-4xl bg-card/30 border border-border/10 backdrop-blur-2xl shadow-3xl shadow-green-500/5">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="font-display font-black text-xl text-foreground tracking-tight">Seasonal Growth Trend</h3>
+                <p className="text-xs text-muted-foreground font-medium mt-0.5">Estimated NDVI curve for {district} — 12-month projection</p>
               </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-green-500/10 border border-green-500/20">
+                <Zap className="w-3 h-3 text-green-400" />
+                <span className="text-[9px] font-black text-green-400 uppercase tracking-widest">Live Model</span>
+              </div>
+            </div>
 
-              <div className="w-full h-[300px]">
-                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data?.trend || ndviData}>
-                       <defs>
-                          <linearGradient id="ndvi_grad" x1="0" y1="0" x2="0" y2="1">
-                             <stop offset="5%" stopColor="#22C55E" stopOpacity={0.3} />
-                             <stop offset="95%" stopColor="#22C55E" stopOpacity={0} />
-                          </linearGradient>
-                       </defs>
-                       <XAxis 
-                          dataKey="month" 
-                          axisLine={false} 
-                          tickLine={false} 
-                          tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)", fontWeight: 800 }} 
-                       />
-                       <YAxis 
-                          axisLine={false} 
-                          tickLine={false} 
-                          tick={{ fontSize: 10, fill: "rgba(255,255,255,0.4)", fontWeight: 800 }} 
-                       />
-                       <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: "rgba(10,20,16,0.9)", 
-                            backdropFilter: "blur(12px)",
-                            border: "1px solid rgba(34,197,94,0.2)",
-                            borderRadius: "16px",
-                            boxShadow: "0 20px 40px -10px rgba(0,0,0,0.5)"
-                          }} 
-                       />
-                       <Area 
-                          type="monotone" 
-                          dataKey="ndvi" 
-                          stroke="#22C55E" 
-                          strokeWidth={4} 
-                          fill="url(#ndvi_grad)" 
-                       />
-                    </AreaChart>
-                 </ResponsiveContainer>
-              </div>
-           </div>
+            <div className="w-full h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trendData}>
+                  <defs>
+                    <linearGradient id="ndvi_grad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#22C55E" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#22C55E" stopOpacity={0}    />
+                    </linearGradient>
+                  </defs>
+                  <XAxis dataKey="month" axisLine={false} tickLine={false}
+                    tick={{ fontSize: 10, fill: "rgba(255,255,255,0.35)", fontWeight: 800 }} />
+                  <YAxis domain={[0, 1]} axisLine={false} tickLine={false}
+                    tick={{ fontSize: 10, fill: "rgba(255,255,255,0.35)", fontWeight: 800 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: "rgba(10,20,16,0.95)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: "16px" }}
+                    formatter={(v: any) => [v.toFixed(3), "NDVI"]}
+                  />
+                  <ReferenceLine y={0.6} stroke="rgba(34,197,94,0.3)" strokeDasharray="4 4" label={{ value: "Healthy ↑", fill: "rgba(34,197,94,0.5)", fontSize: 9, fontWeight: 800 }} />
+                  <Area type="monotone" dataKey="ndvi" stroke="#22C55E" strokeWidth={4} fill="url(#ndvi_grad)"
+                    dot={{ r: 4, fill: "#22C55E", strokeWidth: 0 }} activeDot={{ r: 6, fill: "#22C55E" }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-           <div className="p-6 rounded-3xl bg-blue-500/5 border border-blue-500/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/10">
-                    <Activity className="w-6 h-6" />
-                 </div>
-                 <div>
-                    <h4 className="font-display font-black text-sm text-foreground">Next Review Cycle</h4>
-                    <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-widest">Scheduled in 4 days (Sentinel-2 overpass)</p>
-                 </div>
+          {/* NDVI Scale Legend */}
+          <div className="grid sm:grid-cols-5 gap-3">
+            {[
+              { range: "≥ 0.75", label: "Excellent", color: "bg-emerald-500", text: "text-emerald-400" },
+              { range: "0.60+",  label: "Good",       color: "bg-green-500",   text: "text-green-400" },
+              { range: "0.45+",  label: "Moderate",   color: "bg-yellow-400",  text: "text-yellow-400" },
+              { range: "0.30+",  label: "Poor",       color: "bg-orange-500",  text: "text-orange-400" },
+              { range: "< 0.30", label: "Critical",   color: "bg-red-500",     text: "text-red-400" },
+            ].map((item, i) => (
+              <div key={i} className="p-4 rounded-2xl bg-card/20 border border-border/5 flex flex-col items-center gap-2 hover:bg-card/40 transition-all">
+                <div className={`w-4 h-4 rounded-full ${item.color} shadow-lg`} />
+                <span className={`text-[9px] font-black uppercase tracking-widest ${item.text}`}>{item.label}</span>
+                <span className="text-[9px] font-bold text-muted-foreground/50">{item.range}</span>
               </div>
-              <button className="px-5 py-2 rounded-2xl bg-blue-500/80 text-[10px] font-black text-white hover:bg-blue-600 transition-all shadow-xl shadow-blue-500/10">
-                 VIEW SCHEDULE  
-              </button>
-           </div>
+            ))}
+          </div>
+
+          {/* Next Review */}
+          <div className="p-6 rounded-3xl bg-indigo-500/5 border border-indigo-500/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                <Activity className="w-6 h-6" />
+              </div>
+              <div>
+                <h4 className="font-display font-black text-sm text-foreground">Next Sentinel-2 Overpass</h4>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">Scheduled in 4 days · {district} Sector</p>
+              </div>
+            </div>
+            <button className="px-5 py-2.5 rounded-2xl bg-indigo-500/80 text-[10px] font-black text-white hover:bg-indigo-600 transition-all shadow-xl shadow-indigo-500/20">
+              VIEW SCHEDULE
+            </button>
+          </div>
         </div>
       </div>
     </div>

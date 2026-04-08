@@ -2,11 +2,13 @@ import { Search, Bell, User, Sun, Moon, MapPin, SearchCheck } from "lucide-react
 import { useState, useEffect } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useUser } from "@/context/UserContext";
+import { useLocation } from "@/hooks/useLocation";
 
 export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const { user } = useUser();
+  const { user, profile } = useUser();
+  const { locationName, loading } = useLocation();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
@@ -35,9 +37,14 @@ export const Header = () => {
         {/* Right Actions */}
         <div className="flex items-center gap-4 ml-auto">
           {/* Location Badge */}
-          <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20">
-            <MapPin className="w-3.5 h-3.5 text-blue-500" />
-            <span className="text-[10px] font-black text-blue-500 uppercase tracking-wider">Maharashtra, India</span>
+          <div 
+            className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20"
+            title="Your current location"
+          >
+            <MapPin className={`w-3.5 h-3.5 text-blue-500 ${loading ? 'animate-pulse' : ''}`} />
+            <span className="text-[10px] font-black text-blue-500 uppercase tracking-wider truncate max-w-[200px]">
+              {locationName}
+            </span>
           </div>
 
           <div className="w-px h-6 bg-border/20 mx-1 hidden sm:block" />
@@ -63,7 +70,7 @@ export const Header = () => {
                <User className="w-4 h-4" />
              </div>
              <div className="hidden lg:flex flex-col items-start leading-none gap-0.5">
-               <span className="text-xs font-black text-foreground">{user?.email?.split('@')[0] || "Farmer"}</span>
+               <span className="text-xs font-black text-foreground">{profile?.display_name || user?.email?.split('@')[0] || "Farmer"}</span>
                <span className="text-[9px] text-muted-foreground font-black uppercase tracking-widest">Active Now</span>
              </div>
           </button>

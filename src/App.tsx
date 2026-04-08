@@ -61,6 +61,7 @@ const App = () => {
                   <Route path="/yield-prediction" element={<ProtectedRoute><DashboardLayout><CropYieldPrediction /></DashboardLayout></ProtectedRoute>} />
                   <Route path="/profile" element={<ProtectedRoute><DashboardLayout><UserProfile /></DashboardLayout></ProtectedRoute>} />
                   <Route path="/helpdesk" element={<ProtectedRoute><DashboardLayout><HelpDesk /></DashboardLayout></ProtectedRoute>} />
+                  <Route path="/help-desk" element={<ProtectedRoute><DashboardLayout><HelpDesk /></DashboardLayout></ProtectedRoute>} />
                   <Route path="/history" element={<ProtectedRoute><DashboardLayout><PredictionHistory /></DashboardLayout></ProtectedRoute>} />
                   <Route path="/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
 

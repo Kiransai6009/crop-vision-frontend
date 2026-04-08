@@ -22,6 +22,7 @@ import {
     Upload, Calculator, CheckCircle, Loader2, ImageIcon,
     MapPin, Wifi, RefreshCw
 } from "lucide-react";
+import { yieldService } from "../../services/api";
 import { useLiveWeather, DISTRICT_NAMES } from "../../hooks/useLiveWeather";
 
 /* ── Types ──────────────────────────────────────────────────────────── */
@@ -183,25 +184,20 @@ const YieldPrediction = () => {
                 ndvi = parseFloat(ndvi.toFixed(3));
             }
 
-            // ── Try Flask backend first ─────────────────────────────────
-            // If backend is not running, falls back to the JS prediction formula.
+            // ── Use centralized yieldService for backend prediction ──
             let predictedYield: number;
             try {
-                const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
-                const resp = await fetch(`${API_URL}/api/predict`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ rainfall, temperature, humidity, ndvi }),
-                    signal: AbortSignal.timeout(3000),
+                const data = await yieldService.predict({ 
+                    crop: "General", // Default or you can add a crop selector
+                    rainfall, 
+                    temperature, 
+                    humidity, 
+                    ndvi 
                 });
-                if (resp.ok) {
-                    const data = await resp.json();
-                    predictedYield = data.predicted_yield;
-                } else {
-                    throw new Error("Backend error");
-                }
-            } catch {
-                // Backend not running — use JS fallback formula
+                predictedYield = data.predicted_yield;
+            } catch (err) {
+                console.warn("Backend prediction failed, using fallback formula:", err);
+                // Backend not running or error — use JS fallback formula
                 predictedYield = predictYield(rainfall, temperature, humidity, ndvi);
             }
 

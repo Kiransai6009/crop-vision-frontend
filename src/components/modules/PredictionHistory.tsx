@@ -17,6 +17,7 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid,
     Tooltip, ResponsiveContainer, Legend
 } from "recharts";
+import { yieldService } from "../../services/api";
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 export interface HistoryEntry {
@@ -62,14 +63,43 @@ const saveHistory = (entries: HistoryEntry[]) => {
 
 /* ── Component ─────────────────────────────────────────────────────── */
 const PredictionHistory = () => {
-    const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
+    const [history, setHistory] = useState<HistoryEntry[]>([]);
+    const [loading, setLoading] = useState(true);
     const [showAddForm, setShowAddForm] = useState(false);
     const [newEntry, setNewEntry] = useState<Partial<HistoryEntry>>({
         crop: "Rice", district: "Demo District", rainfall: 120, temperature: 28, humidity: 65, ndvi: 0.6, yield: 4.0
     });
 
-    /* Persist on change */
-    useEffect(() => { saveHistory(history); }, [history]);
+    const fetchHistory = async () => {
+        setLoading(true);
+        try {
+            const data = await yieldService.getHistory();
+            // Data might come back from Supabase or memory bank
+            // Ensure fields match frontend expectations
+            const unified = (data || []).map((p: any) => ({
+                id: p.id || Math.random().toString(),
+                date: p.date || p.created_at || new Date().toISOString(),
+                crop: p.crop || "Unknown",
+                district: p.district || "Analyzed Territory",
+                rainfall: p.rainfall || 0,
+                temperature: p.temperature || 0,
+                humidity: p.humidity || 0,
+                ndvi: p.ndvi || p.ndvi_value || 0,
+                yield: p.yield || p.predicted_yield || 0
+            }));
+            setHistory(unified);
+        } catch (err) {
+            console.error("Failed to fetch history:", err);
+            // Fallback to local seed data if backend fails
+            setHistory(SEED_DATA);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchHistory();
+    }, []);
 
     /* Sort newest first */
     const sorted = [...history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

@@ -1,19 +1,55 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Settings as SettingsIcon, Bell, ShieldCheck, User, Moon, Sun, Monitor, Globe, ChevronRight } from "lucide-react";
+import { 
+  Settings as SettingsIcon, Bell, ShieldCheck, User, Moon, 
+  Sun, Monitor, Globe, ChevronRight 
+} from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
+import { useUser } from "@/context/UserContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const Settings = () => {
   const { theme, setTheme, toggleTheme } = useTheme();
+  const { user, profile, refreshProfile } = useUser();
   const [notifications, setNotifications] = useState(true);
   const [region, setRegion] = useState("Maharashtra, India");
+  const [displayName, setDisplayName] = useState(profile?.display_name || "");
+  const [updating, setUpdating] = useState(false);
+
+  useEffect(() => {
+    if (profile?.display_name) {
+      setDisplayName(profile.display_name);
+    }
+  }, [profile]);
+
+  const handleUpdateProfile = async () => {
+    if (!user) return;
+    setUpdating(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ display_name: displayName })
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+      await refreshProfile();
+      toast.success("Profile updated successfully");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update profile");
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8 max-w-5xl mx-auto py-6 pb-20">
       <div className="flex flex-col gap-2 border-b border-border/10 pb-10">
           <h1 className="font-display text-4xl font-black text-foreground flex items-center gap-4 tracking-tighter">
             <SettingsIcon className="w-10 h-10 text-green-500" />
-            <span>Platform Settings</span>
+            <span>Settings</span>
           </h1>
           <p className="text-sm text-muted-foreground font-medium max-w-2xl">
             Customize your Crop Insight experience. Manage visualization preferences, notification protocols, and security configurations.
@@ -26,10 +62,10 @@ const Settings = () => {
             <div className="p-8 rounded-4xl bg-card/40 border border-border/10 backdrop-blur-2xl shadow-xl space-y-4">
                {[
                  { label: "General", icon: SettingsIcon },
+                 { label: "Profile", icon: User },
                  { label: "Appearance", icon: Moon },
                  { label: "Notifications", icon: Bell },
                  { label: "Security", icon: ShieldCheck },
-                 { label: "Language", icon: Globe },
                ].map((item, i) => (
                  <button key={i} className={`w-full flex items-center gap-3 p-3.5 rounded-2xl transition-all font-black text-[11px] uppercase tracking-widest ${
                    i === 0 ? 'bg-green-500 text-white shadow-xl shadow-green-500/20' : 'text-muted-foreground hover:bg-muted/30'
@@ -43,6 +79,41 @@ const Settings = () => {
 
          {/* Settings Content */}
          <div className="lg:col-span-3 space-y-12">
+            {/* Profile Section */}
+            <div className="p-10 rounded-4xl bg-card/30 border border-border/10 backdrop-blur-2xl shadow-3xl space-y-8">
+               <div className="space-y-1">
+                  <h3 className="text-xl font-black text-foreground tracking-tighter">Personal Profile</h3>
+                  <p className="text-xs text-muted-foreground font-medium">How you appear across the hub</p>
+               </div>
+               
+               <div className="grid gap-6 max-w-md">
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">Display Name</label>
+                     <Input 
+                        value={displayName} 
+                        onChange={(e) => setDisplayName(e.target.value)} 
+                        className="bg-white/5 border-white/10 rounded-xl h-12"
+                        placeholder="Farmer Name"
+                     />
+                  </div>
+                  <div className="space-y-2">
+                     <label className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">Login Email</label>
+                     <Input 
+                        value={user?.email || ""} 
+                        disabled 
+                        className="bg-white/5 border-white/10 rounded-xl h-12 opacity-50 cursor-not-allowed"
+                     />
+                  </div>
+                  <Button 
+                     onClick={handleUpdateProfile} 
+                     disabled={updating}
+                     className="bg-green-500 text-white font-black rounded-xl h-12 hover:bg-green-600 transition-all shadow-xl shadow-green-500/20"
+                  >
+                     {updating ? "SYNCING..." : "UPDATE PROFILE"}
+                  </Button>
+               </div>
+            </div>
+
             {/* Theme Section */}
             <div className="space-y-6">
                <h3 className="text-xs font-black text-muted-foreground/60 uppercase tracking-widest px-2">Visualization Theme</h3>

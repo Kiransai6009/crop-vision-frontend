@@ -9,18 +9,22 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 import { yieldService } from "@/services/api";
+import { MapVisualization } from "@/components/dashboard/MapVisualization";
+import { DISTRICT_COORDS } from "@/hooks/useLiveWeather";
+import { useLocation } from "@/hooks/useLocation";
 
 const crops = [
   "Rice", "Wheat", "Maize", "Soybean", "Cotton", "Sugarcane", "Jowar", "Groundnut", "Sunflower"
 ];
 
-const stateDistricts: Record<string, string[]> = {
-  "Maharashtra": ["Pune", "Nagpur", "Nashik", "Aurangabad", "Amravati"],
-  "Karnataka": ["Bengaluru", "Mysuru", "Hubli", "Belagavi", "Dharwad"],
-  "Punjab": ["Ludhiana", "Amritsar", "Jalandhar", "Patiala", "Bathinda"],
-};
+// Group districts by state from DISTRICT_COORDS
+const stateDistrictsMap = Object.entries(DISTRICT_COORDS).reduce((acc, [dist, info]) => {
+  if (!acc[info.state]) acc[info.state] = [];
+  acc[info.state].push(dist);
+  return acc;
+}, {} as Record<string, string[]>);
 
-const states = Object.keys(stateDistricts);
+const states = Object.keys(stateDistrictsMap).sort();
 
 const StatCard = ({
   icon: Icon, label, value, sub, color, delay
@@ -45,25 +49,35 @@ const StatCard = ({
 );
 
 const Dashboard = () => {
+  const userLocation = useLocation();
   const [selectedCrop, setSelectedCrop] = useState("Rice");
   const [selectedState, setSelectedState] = useState("Maharashtra");
-  const [selectedDistrict, setSelectedDistrict] = useState(stateDistricts["Maharashtra"][0]);
+  const [selectedDistrict, setSelectedDistrict] = useState(stateDistrictsMap["Maharashtra"][0]);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
 
-  const districts = stateDistricts[selectedState] || [];
+  const districts = stateDistrictsMap[selectedState] || [];
 
   const handleStateChange = (state: string) => {
     setSelectedState(state);
-    setSelectedDistrict(stateDistricts[state]?.[0] || "");
+    setSelectedDistrict(stateDistrictsMap[state]?.[0] || "");
   };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // Find Lat/Lon from a mock or real source. For now using sample coords.
-        const res = await yieldService.getDashboard(18.5204, 73.8567, selectedCrop);
+        // Preference: Browser Geoloc -> Selected District Lookup -> Default Pune
+        let lat = userLocation.lat;
+        let lon = userLocation.lon;
+        
+        if (!lat || !lon) {
+           const lookup = DISTRICT_COORDS[selectedDistrict];
+           lat = lookup?.lat || 18.5204;
+           lon = lookup?.lon || 73.8567;
+        }
+
+        const res = await yieldService.getDashboard(lat, lon, selectedCrop);
         setData(res);
       } catch (err) {
         console.error("Dashboard fetch error:", err);
@@ -72,7 +86,7 @@ const Dashboard = () => {
       }
     };
     fetchDashboardData();
-  }, [selectedDistrict, selectedCrop]);
+  }, [selectedDistrict, selectedCrop, userLocation.lat, userLocation.lon]);
 
   return (
     <div className="flex flex-col gap-8 relative z-20 max-w-[1500px] mx-auto pb-10">
@@ -88,7 +102,7 @@ const Dashboard = () => {
             <span>{selectedCrop} Analytics Hub</span>
           </h1>
           <p className="text-sm text-muted-foreground font-medium max-w-2xl">
-            High-precision monitoring for <span className="text-green-500 font-bold">{selectedDistrict}, {selectedState}</span>. 
+            High-precision monitoring for <span className="text-green-500 font-bold">{userLocation.locationName || `${selectedDistrict}, ${selectedState}`}</span>. 
             Synthesizing multi-source satellite reflectance and historical weather patterns.
           </p>
         </div>
@@ -200,6 +214,11 @@ const Dashboard = () => {
              </ResponsiveContainer>
           </div>
         </div>
+      </div>
+
+      {/* Geospatial Intelligence */}
+      <div className="grid grid-cols-1 gap-8">
+        <MapVisualization district={selectedDistrict} state={selectedState} />
       </div>
 
       {/* Bottom Insights */}
