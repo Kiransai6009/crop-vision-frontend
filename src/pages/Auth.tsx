@@ -146,7 +146,7 @@ const Auth = () => {
   `;
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 md:p-0 relative overflow-hidden" style={{ background: "#050D0A" }}>
+    <div className="min-h-screen w-full flex flex-col items-center justify-center px-4 sm:px-6 relative overflow-x-hidden" style={{ background: "#050D0A" }}>
       <Suspense fallback={null}>
         <ParticleBackground />
       </Suspense>
@@ -159,7 +159,7 @@ const Auth = () => {
         }} />
       </div>
 
-      <div className="w-full max-w-md md:max-w-4xl grid md:grid-cols-2 gap-8 relative z-10">
+      <div className="w-full max-w-md md:max-w-4xl grid md:grid-cols-2 gap-8 md:gap-12 relative z-10">
         <motion.div
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
