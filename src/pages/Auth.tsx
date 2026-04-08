@@ -145,7 +145,7 @@ const Auth = () => {
   `;
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden" style={{ background: "#050D0A" }}>
+    <div className="min-h-screen w-full flex items-center justify-center p-4 md:p-0 relative overflow-hidden" style={{ background: "#050D0A" }}>
       <Suspense fallback={null}>
         <ParticleBackground />
       </Suspense>
@@ -158,7 +158,7 @@ const Auth = () => {
         }} />
       </div>
 
-      <div className="w-full max-w-4xl grid md:grid-cols-2 gap-8 relative z-10">
+      <div className="w-full max-w-md md:max-w-4xl grid md:grid-cols-2 gap-8 relative z-10">
         <motion.div
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
@@ -211,7 +211,7 @@ const Auth = () => {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className="glass-card rounded-[32px] p-6 md:p-10 relative overflow-hidden flex flex-col justify-center"
+          className="glass-card rounded-[32px] p-6 md:p-10 relative overflow-hidden flex flex-col justify-center w-full max-w-md mx-auto"
           style={{ border: "1px solid rgba(0,255,135,0.18)", boxShadow: "0 0 80px rgba(0,255,135,0.08), 0 32px 64px rgba(0,0,0,0.6)" }}
         >
           <div className="text-center mb-10">
