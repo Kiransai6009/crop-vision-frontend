@@ -237,12 +237,12 @@ const Auth = () => {
   `;
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center px-4 sm:px-6 relative overflow-x-hidden" style={{ background: "#050D0A" }}>
-      <Suspense fallback={null}>
-        <ParticleBackground />
-      </Suspense>
-
-      <div className="absolute inset-0 pointer-events-none z-0">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center relative overflow-hidden px-4 sm:px-6" style={{ background: "#050D0A" }}>
+      {/* Absolute Background Elements */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <Suspense fallback={null}>
+          <ParticleBackground />
+        </Suspense>
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full blur-[160px]" style={{ background: "rgba(0,255,135,0.06)" }} />
         <div className="absolute inset-0 opacity-[0.025]" style={{
           backgroundImage: "linear-gradient(rgba(0,255,135,0.5) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,135,0.5) 1px,transparent 1px)",
@@ -250,7 +250,8 @@ const Auth = () => {
         }} />
       </div>
 
-      <div className="w-full max-w-md md:max-w-4xl grid md:grid-cols-2 gap-8 md:gap-12 relative z-10">
+      {/* Main Content Area */}
+      <div className="w-full max-w-md md:max-w-4xl grid md:grid-cols-2 gap-8 md:gap-12 relative z-10 my-auto">
         <motion.div
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
