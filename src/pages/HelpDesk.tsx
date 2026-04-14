@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { authService } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,14 +17,6 @@ import ReactMarkdown from "react-markdown";
 import { useUser } from "@/context/UserContext";
 
 type Msg = { role: "user" | "assistant"; content: string };
-type Ticket = {
-  id: string;
-  subject: string;
-  description: string;
-  status: string;
-  priority: string;
-  created_at: string;
-};
 type FAQ = { id: string; question: string; answer: string; category: string };
 
 const MOCK_FAQS: FAQ[] = [
@@ -41,12 +33,12 @@ const FAQSection = () => {
   useEffect(() => {
     const fetchFaqs = async () => {
       try {
-        const { data, error } = await supabase.from("faq").select("*").order("sort_order");
+        const data = await authService.getFAQ();
         if (data && data.length > 0) {
           setFaqs(data);
         }
       } catch (err) {
-        // Silent fallback to mock data already in state
+        // Silent fallback
       }
     };
     fetchFaqs();
@@ -151,24 +143,22 @@ const ContactForm = () => {
     const [subject, setSubject] = useState("");
     const [description, setDescription] = useState("");
     const [loading, setLoading] = useState(false);
+    const { user } = useUser();
   
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+      if (!user) { toast.error("Verification Required: Please authenticate into the terminal first."); return; }
+      
       setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { toast.error("Verification Required: Please authenticate into the terminal first."); setLoading(false); return; }
-      
-      const { error } = await supabase.from("support_tickets").insert({ user_id: user.id, subject, description, priority: "medium" });
-      
-      if (error) {
-        console.warn("Supabase Ticket Error (Local Bypass):", error.message);
-        toast.success("Transmitted via local buffer. Engineers will analyze shortly.", { description: "Remote sync pending database migration." });
+      try {
+        await authService.submitTicket({ subject, description });
+        toast.success("Transmission complete. Ticket recorded.");
         setSubject(""); setDescription("");
-      } else {
-        toast.success("Transmission complete. Ticket id recorded.");
-        setSubject(""); setDescription("");
+      } catch (err: any) {
+        toast.error(err.response?.data?.error || "Failed to transmit ticket.");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
   
     return (

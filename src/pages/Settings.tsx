@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/context/ThemeContext";
 import { useUser } from "@/context/UserContext";
-import { supabase } from "@/integrations/supabase/client";
+import { authService } from "@/services/api";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,16 +29,11 @@ const Settings = () => {
     if (!user) return;
     setUpdating(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ display_name: displayName })
-        .eq("user_id", user.id);
-
-      if (error) throw error;
+      await authService.updateProfile({ display_name: displayName });
       await refreshProfile();
       toast.success("Profile updated successfully");
     } catch (err: any) {
-      toast.error(err.message || "Failed to update profile");
+      toast.error(err.response?.data?.error || "Failed to update profile");
     } finally {
       setUpdating(false);
     }

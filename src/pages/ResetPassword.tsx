@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { authService } from "@/services/api";
 import { motion } from "framer-motion";
-import { Lock, Leaf, Loader2, ArrowLeft, ShieldCheck, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { Lock, Leaf, Loader2, ArrowLeft, ShieldCheck, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { lazy, Suspense } from "react";
 
@@ -15,19 +14,17 @@ const ResetPassword = () => {
   const [resetSuccess, setResetSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
+  const token = searchParams.get("token");
+
   useEffect(() => {
-    // Check if we have a session to update the password
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Invalid or expired session. Please request a new reset link.");
-        navigate("/forgot-password");
-      }
-    };
-    checkSession();
-  }, [navigate]);
+    if (!token) {
+      toast.error("No reset token found. Please use the link from your email.");
+      navigate("/forgot-password");
+    }
+  }, [token, navigate]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,21 +39,20 @@ const ResetPassword = () => {
       return;
     }
 
+    if (!token) return;
+
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password });
-      
-      if (error) throw error;
+      await authService.resetPassword({ token, new_password: password });
       
       setResetSuccess(true);
       toast.success("Password updated successfully!");
       
-      // Auto redirect after 3 seconds
       setTimeout(() => {
         navigate("/auth");
       }, 3000);
     } catch (error: any) {
-      toast.error(error.message || "Failed to update password.");
+      toast.error(error.response?.data?.error || "Failed to update password.");
     } finally {
       setLoading(false);
     }

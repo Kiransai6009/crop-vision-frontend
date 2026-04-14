@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { User, Mail, ShieldCheck, MapPin, Edit3, Settings, LogOut, CheckCircle2, Save, X, Loader2 } from "lucide-react";
 import { useUser } from "@/context/UserContext";
-import { supabase } from "@/integrations/supabase/client";
+import { authService } from "@/services/api";
 import { toast } from "sonner";
 
 const UserProfile = () => {
@@ -20,20 +20,12 @@ const UserProfile = () => {
     if (!user) return;
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ display_name: name })
-        .eq("user_id", user.id);
-
-      if (error) {
-        toast.error("Failed to update profile: " + error.message);
-      } else {
-        await refreshProfile();
-        setEditing(false);
-        toast.success("Profile updated successfully!");
-      }
-    } catch (err) {
-       toast.error("An unexpected error occurred.");
+      await authService.updateProfile({ display_name: name });
+      await refreshProfile();
+      setEditing(false);
+      toast.success("Profile updated successfully!");
+    } catch (err: any) {
+       toast.error(err.response?.data?.error || "An unexpected error occurred.");
     } finally {
       setIsSaving(false);
     }

@@ -17,10 +17,6 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     );
   }
 
-  // Bypass Auth in Development to prevent rate-limit blocking
-  if (!user && import.meta.env.DEV) {
-    return <>{children}</>;
-  }
 
   if (!user) {
     return <Navigate to="/auth" replace />;

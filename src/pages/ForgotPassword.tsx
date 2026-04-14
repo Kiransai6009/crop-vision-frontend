@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { authService } from "@/services/api";
 import { motion } from "framer-motion";
 import { Mail, ArrowLeft, Loader2, Leaf, Send, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,16 +22,12 @@ const ForgotPassword = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
+      await authService.forgotPassword(email.trim());
       
       setSubmitted(true);
       toast.success("Password reset link sent to your email!");
     } catch (error: any) {
-      toast.error(error.message || "Failed to send reset link.");
+      toast.error(error.response?.data?.error || "Failed to send reset link.");
     } finally {
       setLoading(false);
     }

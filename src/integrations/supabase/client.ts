@@ -1,17 +1,27 @@
-import { createClient } from '@supabase/supabase-js';
+// This file has been hollowed out for the MongoDB migration.
+// Supabase logic has been replaced with the custom Flask API.
+// Redirecting all calls through a mock to prevent frontend crashes.
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Validation log (for debug mode, can be silenced in production)
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error("CRITICAL AUTH ERROR: Environment variables are missing or incorrectly configured in .env");
-}
-
-export const supabase = createClient(SUPABASE_URL || "", SUPABASE_ANON_KEY || "", {
+const mockClient: any = {
   auth: {
-    storage: window.localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-  }
-});
+    getSession: async () => ({ data: { session: null }, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    signInWithPassword: async () => { throw new Error("Supabase is disabled. Use custom auth."); },
+    signUp: async () => { throw new Error("Supabase is disabled. Use custom auth."); },
+    signOut: async () => {},
+    getUser: async () => ({ data: { user: null }, error: null }),
+    resetPasswordForEmail: async () => { throw new Error("Use custom auth."); },
+  },
+  from: () => ({
+    select: () => ({
+      eq: () => ({
+        single: async () => ({ data: null, error: new Error("Supabase is disabled.") }),
+        order: () => ({ limit: () => ({ execute: async () => ({ data: [], error: null }) }) }),
+      }),
+      order: () => ({ limit: () => ({ execute: async () => ({ data: [], error: null }) }) }),
+    }),
+    insert: () => ({ execute: async () => ({ data: null, error: new Error("Supabase disabled.") }) }),
+  }),
+};
+
+export const supabase = mockClient;
