@@ -23,7 +23,7 @@ api.interceptors.request.use(async (config) => {
 });
 
 export const yieldService = {
-  predict: async (data: { crop: string; rainfall?: number; temperature?: number; humidity?: number; ndvi?: number }) => {
+  predict: async (data: { crop: string; rainfall?: number; temperature?: number; humidity?: number; ndvi?: number; lat?: number; lon?: number }) => {
     const response = await api.post("/api/predict", data);
     return response.data;
   },
@@ -50,8 +50,8 @@ export const satelliteService = {
     const response = await api.post("/ndvi", { lat, lon, start, end });
     return response.data;
   },
-  getRawData: async () => {
-    const response = await api.get("/api/dashboard?lat=18.5204&lon=73.8567");
+  getRawData: async (lat: number, lon: number) => {
+    const response = await api.get(`/api/dashboard?lat=${lat}&lon=${lon}`);
     return response.data;
   }
 };
@@ -59,6 +59,13 @@ export const satelliteService = {
 export const weatherService = {
   getForecast: async (lat: number, lon: number) => {
     const response = await api.get(`/api/weather?lat=${lat}&lon=${lon}`);
+    return response.data;
+  },
+};
+
+export const locationService = {
+  sendLocation: async (lat: number, lon: number, locationName: string) => {
+    const response = await api.post("/api/location", { lat, lon, location_name: locationName });
     return response.data;
   },
 };

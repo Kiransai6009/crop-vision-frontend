@@ -74,7 +74,7 @@ const PredictionHistory = () => {
         setLoading(true);
         try {
             const data = await yieldService.getHistory();
-            // Data might come back from Supabase or memory bank
+            // Data comes from MongoDB backend
             // Ensure fields match frontend expectations
             const unified = (data || []).map((p: any) => ({
                 id: p.id || Math.random().toString(),

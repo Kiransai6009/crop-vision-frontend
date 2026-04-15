@@ -25,7 +25,7 @@ import {
     Tooltip, ResponsiveContainer, Legend
 } from "recharts";
 import { useLiveWeather, DISTRICT_NAMES } from "../../hooks/useLiveWeather";
-import { useLocation } from "../../hooks/useLocation";
+import { useGlobalLocation } from "../../context/LocationContext";
 
 /* ── Stat card component ─────────────────────────────────────────── */
 const StatCard = ({
@@ -53,7 +53,7 @@ const StatCard = ({
 
 /* ── Component ─────────────────────────────────────────────────────── */
 const WeatherDashboard = () => {
-    const { city, lat, lon } = useLocation();
+    const { city, lat, lon } = useGlobalLocation();
     
     const customCoords = (lat && lon) ? { lat, lon, state: "" } : undefined;
     const { data, setDistrict, refresh } = useLiveWeather(city || "Hyderabad", customCoords);

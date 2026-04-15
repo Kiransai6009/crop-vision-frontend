@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 import { UserProvider } from "./context/UserContext";
 import { SidebarProvider } from "./context/SidebarContext";
+import { LocationProvider } from "./context/LocationContext";
 
 // Auth Guard
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
@@ -38,40 +39,42 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <UserProvider>
-        <ThemeProvider>
-          <SidebarProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <Routes>
-                  {/* Public Landing */}
-                  <Route path="/" element={<Index />} />
-                  <Route path="/home" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/forgot-password" element={<ForgotPassword />} />
-                  <Route path="/reset-password" element={<ResetPassword />} />
+        <LocationProvider>
+          <ThemeProvider>
+            <SidebarProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <Routes>
+                    {/* Public Landing */}
+                    <Route path="/" element={<Index />} />
+                    <Route path="/home" element={<Index />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
 
-                  {/* Protected Dashboard Routes wrapped in DashboardLayout */}
-                  <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>} />
-                  <Route path="/modules" element={<ProtectedRoute><DashboardLayout><ModulesDashboard /></DashboardLayout></ProtectedRoute>} />
-                  <Route path="/satellite" element={<ProtectedRoute><DashboardLayout><SatelliteData /></DashboardLayout></ProtectedRoute>} />
-                  <Route path="/ndvi" element={<ProtectedRoute><DashboardLayout><NDVIAnalysis /></DashboardLayout></ProtectedRoute>} />
-                  <Route path="/weather" element={<ProtectedRoute><DashboardLayout><WeatherAnalytics /></DashboardLayout></ProtectedRoute>} />
-                  <Route path="/yield-prediction" element={<ProtectedRoute><DashboardLayout><CropYieldPrediction /></DashboardLayout></ProtectedRoute>} />
-                  <Route path="/profile" element={<ProtectedRoute><DashboardLayout><UserProfile /></DashboardLayout></ProtectedRoute>} />
-                  <Route path="/helpdesk" element={<ProtectedRoute><DashboardLayout><HelpDesk /></DashboardLayout></ProtectedRoute>} />
-                  <Route path="/help-desk" element={<ProtectedRoute><DashboardLayout><HelpDesk /></DashboardLayout></ProtectedRoute>} />
-                  <Route path="/history" element={<ProtectedRoute><DashboardLayout><PredictionHistory /></DashboardLayout></ProtectedRoute>} />
-                  <Route path="/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
+                    {/* Protected Dashboard Routes wrapped in DashboardLayout */}
+                    <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout><Dashboard /></DashboardLayout></ProtectedRoute>} />
+                    <Route path="/modules" element={<ProtectedRoute><DashboardLayout><ModulesDashboard /></DashboardLayout></ProtectedRoute>} />
+                    <Route path="/satellite" element={<ProtectedRoute><DashboardLayout><SatelliteData /></DashboardLayout></ProtectedRoute>} />
+                    <Route path="/ndvi" element={<ProtectedRoute><DashboardLayout><NDVIAnalysis /></DashboardLayout></ProtectedRoute>} />
+                    <Route path="/weather" element={<ProtectedRoute><DashboardLayout><WeatherAnalytics /></DashboardLayout></ProtectedRoute>} />
+                    <Route path="/yield-prediction" element={<ProtectedRoute><DashboardLayout><CropYieldPrediction /></DashboardLayout></ProtectedRoute>} />
+                    <Route path="/profile" element={<ProtectedRoute><DashboardLayout><UserProfile /></DashboardLayout></ProtectedRoute>} />
+                    <Route path="/helpdesk" element={<ProtectedRoute><DashboardLayout><HelpDesk /></DashboardLayout></ProtectedRoute>} />
+                    <Route path="/help-desk" element={<ProtectedRoute><DashboardLayout><HelpDesk /></DashboardLayout></ProtectedRoute>} />
+                    <Route path="/history" element={<ProtectedRoute><DashboardLayout><PredictionHistory /></DashboardLayout></ProtectedRoute>} />
+                    <Route path="/settings" element={<ProtectedRoute><DashboardLayout><Settings /></DashboardLayout></ProtectedRoute>} />
 
-                  {/* Catch-all */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
-            </TooltipProvider>
-          </SidebarProvider>
-        </ThemeProvider>
+                    {/* Catch-all */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </BrowserRouter>
+              </TooltipProvider>
+            </SidebarProvider>
+          </ThemeProvider>
+        </LocationProvider>
       </UserProvider>
     </QueryClientProvider>
   );

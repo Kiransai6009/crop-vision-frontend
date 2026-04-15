@@ -2,13 +2,13 @@ import { Search, Bell, User, Sun, Moon, MapPin, SearchCheck } from "lucide-react
 import { useState, useEffect } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useUser } from "@/context/UserContext";
-import { useLocation } from "@/hooks/useLocation";
+import { useGlobalLocation } from "@/context/LocationContext";
 
 export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { user, profile } = useUser();
-  const { locationName, loading } = useLocation();
+  const { locationName, loading } = useGlobalLocation();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);

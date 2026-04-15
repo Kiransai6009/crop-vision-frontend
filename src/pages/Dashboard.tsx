@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Satellite, CloudRain, Thermometer, Droplets, TrendingUp,
-  Wheat, MapPin, Leaf, BarChart3, Loader2
+  Wheat, MapPin, Leaf, BarChart3, Loader2, RefreshCw, Navigation
 } from "lucide-react";
 import {
   LineChart, Line, AreaChart, Area, BarChart, Bar,
@@ -11,7 +11,7 @@ import {
 import { yieldService } from "@/services/api";
 import { MapVisualization } from "@/components/dashboard/MapVisualization";
 import { DISTRICT_COORDS } from "@/hooks/useLiveWeather";
-import { useLocation } from "@/hooks/useLocation";
+import { useGlobalLocation } from "@/context/LocationContext";
 
 const crops = [
   "Rice", "Wheat", "Maize", "Soybean", "Cotton", "Sugarcane", "Jowar", "Groundnut", "Sunflower"
@@ -49,7 +49,7 @@ const StatCard = ({
 );
 
 const Dashboard = () => {
-  const userLocation = useLocation();
+  const userLocation = useGlobalLocation();
   const [selectedCrop, setSelectedCrop] = useState("Rice");
   const [selectedState, setSelectedState] = useState("Maharashtra");
   const [selectedDistrict, setSelectedDistrict] = useState(stateDistrictsMap["Maharashtra"][0]);
@@ -101,10 +101,21 @@ const Dashboard = () => {
             <TrendingUp className="w-10 h-10 text-green-500" />
             <span>{selectedCrop} Analytics Hub</span>
           </h1>
-          <p className="text-sm text-muted-foreground font-medium max-w-2xl">
-            High-precision monitoring for <span className="text-green-500 font-bold">{userLocation.locationName || `${selectedDistrict}, ${selectedState}`}</span>. 
-            Synthesizing multi-source satellite reflectance and historical weather patterns.
-          </p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <p className="text-sm text-muted-foreground font-medium max-w-2xl">
+              High-precision monitoring for <span className="text-green-500 font-bold">{userLocation.locationName || `${selectedDistrict}, ${selectedState}`}</span>. 
+              Synthesizing multi-source satellite reflectance and historical weather patterns.
+            </p>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-green-500/5 border border-green-500/10">
+              <Navigation className="w-3 h-3 text-green-500" />
+              <span className="text-[9px] font-black text-green-500 uppercase tracking-widest">
+                {userLocation.loading ? "Detecting..." : "📍 Auto-Detected"}
+              </span>
+              <button onClick={userLocation.refreshLocation} className="ml-1 p-1 rounded-lg hover:bg-green-500/10 transition-colors" title="Refresh Location">
+                <RefreshCw className="w-3 h-3 text-green-500" />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Global Filters */}

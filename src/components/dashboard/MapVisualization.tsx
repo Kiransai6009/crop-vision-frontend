@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Polygon } from "r
 import { MapPin, Activity, Droplets } from "lucide-react";
 
 import { DISTRICT_COORDS } from "@/hooks/useLiveWeather";
-import { useLocation } from "@/hooks/useLocation";
+import { useGlobalLocation } from "@/context/LocationContext";
 
 interface MapProps {
   district: string;
@@ -37,7 +37,7 @@ const generateNodes = (lat: number, lon: number) => {
 };
 
 export const MapVisualization = ({ district, state }: MapProps) => {
-  const { lat: userLat, lon: userLon, city } = useLocation();
+  const { lat: userLat, lon: userLon, city } = useGlobalLocation();
   const [coords, setCoords] = useState<[number, number]>([18.5204, 73.8567]); 
 
   useEffect(() => {
