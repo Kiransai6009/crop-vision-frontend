@@ -7,10 +7,14 @@ interface LocationData {
   city: string;
   loading: boolean;
   error: string | null;
+  mode: "current" | "district";
+  selectedDistrict: string | null;
 }
 
 interface LocationContextType extends LocationData {
   refreshLocation: () => void;
+  setMode: (mode: "current" | "district") => void;
+  setSelectedDistrict: (district: string | null) => void;
 }
 
 // Default fallback: Hyderabad, India
@@ -28,6 +32,8 @@ export const LocationProvider = ({ children }: { children: React.ReactNode }) =>
     city: "Hyderabad",
     loading: true,
     error: null,
+    mode: "current",
+    selectedDistrict: null,
   });
 
   const detectLocation = useCallback(() => {
@@ -164,14 +170,16 @@ export const LocationProvider = ({ children }: { children: React.ReactNode }) =>
     detectLocation();
   }, [detectLocation]);
 
-  const refreshLocation = useCallback(() => {
-    // Clear cache and re-detect
-    localStorage.removeItem("cropinsight_location");
-    detectLocation();
-  }, [detectLocation]);
+  const setMode = (mode: "current" | "district") => {
+    setState(prev => ({ ...prev, mode }));
+  };
+
+  const setSelectedDistrict = (district: string | null) => {
+    setState(prev => ({ ...prev, selectedDistrict: district }));
+  };
 
   return (
-    <LocationContext.Provider value={{ ...state, refreshLocation }}>
+    <LocationContext.Provider value={{ ...state, refreshLocation, setMode, setSelectedDistrict }}>
       {children}
     </LocationContext.Provider>
   );

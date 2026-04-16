@@ -22,6 +22,10 @@ export const DISTRICT_COORDS: Record<string, { lat: number; lon: number; state: 
     "Visakhapatnam": { lat: 17.7, lon: 83.2, state: "Andhra Pradesh" },
     "Kurnool": { lat: 15.8, lon: 78.1, state: "Andhra Pradesh" },
     "Tirupati": { lat: 13.6, lon: 79.4, state: "Andhra Pradesh" },
+    "NTR": { lat: 16.5, lon: 80.6, state: "Andhra Pradesh" },
+    "Anantapur": { lat: 14.7, lon: 77.6, state: "Andhra Pradesh" },
+    "Nellore": { lat: 14.4, lon: 80.0, state: "Andhra Pradesh" },
+    "Chittoor": { lat: 13.2, lon: 79.1, state: "Andhra Pradesh" },
     // Telangana
     "Hyderabad": { lat: 17.4, lon: 78.5, state: "Telangana" },
     "Karimnagar": { lat: 18.4, lon: 79.1, state: "Telangana" },

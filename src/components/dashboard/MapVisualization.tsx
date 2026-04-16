@@ -1,10 +1,21 @@
 import "leaflet/dist/leaflet.css";
 import { useEffect, useState, useMemo } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Polygon } from "react-leaflet";
-import { MapPin, Activity, Droplets } from "lucide-react";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap, Polygon, GeoJSON, Marker } from "react-leaflet";
+import { MapPin, Activity, Droplets, LocateFixed, Map as MapIcon, ChevronRight } from "lucide-react";
+import L from "leaflet";
 
 import { DISTRICT_COORDS } from "@/hooks/useLiveWeather";
 import { useGlobalLocation } from "@/context/LocationContext";
+import { apDistrictsGeoJSON } from "@/data/ap_districts";
+
+// Fix Leaflet marker icon issue
+// @ts-ignore
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
 
 interface MapProps {
   district: string;
@@ -37,21 +48,35 @@ const generateNodes = (lat: number, lon: number) => {
 };
 
 export const MapVisualization = ({ district, state }: MapProps) => {
-  const { lat: userLat, lon: userLon, city } = useGlobalLocation();
-  const [coords, setCoords] = useState<[number, number]>([18.5204, 73.8567]); 
+  const { 
+    lat: userLat, 
+    lon: userLon, 
+    city, 
+    mode, 
+    setMode, 
+    selectedDistrict, 
+    setSelectedDistrict,
+    locationName 
+  } = useGlobalLocation();
+  
+  const [coords, setCoords] = useState<[number, number]>([15.9129, 79.74]); // AP Center default
 
   useEffect(() => {
-    const lookup = DISTRICT_COORDS[district];
-    if (district === city && userLat && userLon) {
+    if (mode === "current" && userLat && userLon) {
       setCoords([userLat, userLon]);
-    } else if (lookup) {
-      setCoords([lookup.lat, lookup.lon]);
-    } else if (userLat && userLon) {
-      setCoords([userLat, userLon]);
+    } else if (mode === "district" && selectedDistrict) {
+      const lookup = DISTRICT_COORDS[selectedDistrict];
+      if (lookup) {
+        setCoords([lookup.lat, lookup.lon]);
+      } else {
+        // Fallback to AP center if district coords not found
+        setCoords([15.9129, 79.74]);
+      }
     } else {
-      setCoords([19.0 + Math.random() * 2, 73.0 + Math.random() * 2]);
+      // General fallback
+      setCoords([15.9129, 79.74]);
     }
-  }, [district, state, userLat, userLon, city]);
+  }, [mode, selectedDistrict, userLat, userLon]);
 
   // Compute nodes and farm boundaries when coords change
   const { nodes, boundingBox } = useMemo(() => {
@@ -74,7 +99,9 @@ export const MapVisualization = ({ district, state }: MapProps) => {
            <MapPin className="w-5 h-5 text-green-500" />
            <span className="font-display font-black text-foreground text-lg tracking-tighter">GeoVisualization</span>
         </div>
-        <p className="text-xs font-black text-muted-foreground/60 tracking-widest uppercase ml-7">Active ROI: {district}, {state}</p>
+        <p className="text-xs font-black text-muted-foreground/60 tracking-widest uppercase ml-7">
+          {mode === "current" ? `Active ROI: ${city}` : `District Intel: ${selectedDistrict || "Andhra Pradesh"}`}
+        </p>
       </div>
 
       <div className="w-full h-full rounded-3xl overflow-hidden mt-2 relative z-10 border border-border/10 shadow-[inset_0_0_100px_rgba(0,0,0,0.5)]">
@@ -92,16 +119,60 @@ export const MapVisualization = ({ district, state }: MapProps) => {
           
           <RecenterMap lat={coords[0]} lon={coords[1]} />
           
-          <Polygon positions={boundingBox} pathOptions={{ color: '#22C55E', weight: 2, dashArray: '5, 10', fillColor: '#22C55E', fillOpacity: 0.05 }} />
+          {mode === "current" && userLat && userLon && (
+             <Marker position={[userLat, userLon]}>
+                <Popup>
+                   <div className="font-bold">You are here</div>
+                   <div className="text-xs text-muted-foreground">{locationName}</div>
+                </Popup>
+             </Marker>
+          )}
+
+          {mode === "district" && (
+            <GeoJSON 
+              data={apDistrictsGeoJSON as any} 
+              style={(feature) => ({
+                color: selectedDistrict === feature?.properties.district ? "#22C55E" : "#4B5563",
+                weight: selectedDistrict === feature?.properties.district ? 3 : 1,
+                fillColor: selectedDistrict === feature?.properties.district ? "#22C55E" : "#1F2937",
+                fillOpacity: selectedDistrict === feature?.properties.district ? 0.3 : 0.1,
+              })}
+              onEachFeature={(feature, layer) => {
+                layer.on({
+                  click: () => {
+                    const dName = feature.properties.district;
+                    alert("Selected District: " + dName);
+                    setSelectedDistrict(dName);
+                  },
+                  mouseover: (e) => {
+                    const l = e.target;
+                    l.setStyle({ fillOpacity: 0.5 });
+                  },
+                  mouseout: (e) => {
+                    const l = e.target;
+                    if (feature.properties.district !== selectedDistrict) {
+                      l.setStyle({ fillOpacity: 0.1 });
+                    } else {
+                      l.setStyle({ fillOpacity: 0.3 });
+                    }
+                  }
+                });
+              }}
+            />
+          )}
+          
+          {mode === "current" && <Polygon positions={boundingBox} pathOptions={{ color: '#22C55E', weight: 2, dashArray: '5, 10', fillColor: '#22C55E', fillOpacity: 0.05 }} />}
 
           {/* Main Focus Ring */}
-          <CircleMarker
-            center={coords}
-            pathOptions={{ color: 'rgba(34,197,94,0.3)', fillColor: 'none', weight: 1 }}
-            radius={80}
-          />
+          {mode === "current" && (
+            <CircleMarker
+              center={coords}
+              pathOptions={{ color: 'rgba(34,197,94,0.3)', fillColor: 'none', weight: 1 }}
+              radius={80}
+            />
+          )}
 
-          {nodes.map(node => (
+          {mode === "current" && nodes.map(node => (
              <CircleMarker
                key={node.id}
                center={[node.lat, node.lon]}
@@ -138,21 +209,64 @@ export const MapVisualization = ({ district, state }: MapProps) => {
           ))}
         </MapContainer>
         
+        {/* Mode Toggle Controls */}
+        <div className="absolute top-6 right-6 z-[400] flex gap-2">
+          <button 
+            onClick={() => setMode("current")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-300 shadow-xl ${
+              mode === "current" 
+                ? "bg-green-500 border-green-400 text-white font-black" 
+                : "bg-background/80 backdrop-blur-xl border-border/20 text-muted-foreground hover:bg-background"
+            }`}
+          >
+            <LocateFixed className="w-4 h-4" />
+            <span className="text-xs">My Location</span>
+          </button>
+          <button 
+            onClick={() => setMode("district")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border transition-all duration-300 shadow-xl ${
+              mode === "district" 
+                ? "bg-green-500 border-green-400 text-white font-black" 
+                : "bg-background/80 backdrop-blur-xl border-border/20 text-muted-foreground hover:bg-background"
+            }`}
+          >
+            <MapIcon className="w-4 h-4" />
+            <span className="text-xs">AP Districts</span>
+          </button>
+        </div>
+
         {/* Analytics Overlays */}
         <div className="absolute bottom-6 right-6 z-[400] flex flex-col gap-3 pointer-events-none">
-          <div className="flex flex-col gap-1 bg-background/90 backdrop-blur-md border border-border/20 p-4 rounded-2xl shadow-2xl">
+          <div className="flex flex-col gap-1 bg-background/90 backdrop-blur-md border border-border/20 p-4 rounded-2xl shadow-2xl min-w-[180px]">
              <div className="flex items-center justify-between gap-4 mb-2">
-                <span className="text-[10px] font-black tracking-widest uppercase text-muted-foreground/80">Sensor Grid</span>
+                <span className="text-[10px] font-black tracking-widest uppercase text-muted-foreground/80">
+                  {mode === "current" ? "Sensor Grid" : "District Intel"}
+                </span>
                 <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
              </div>
-             <div className="flex items-center justify-between gap-6">
-                <span className="text-xs font-bold text-foreground">Active Nodes</span>
-                <span className="text-sm font-black text-green-500">5 / 5</span>
-             </div>
-             <div className="flex items-center justify-between gap-6">
-                <span className="text-xs font-bold text-foreground">Coverage Area</span>
-                <span className="text-sm font-black text-foreground">14.2 km²</span>
-             </div>
+             {mode === "current" ? (
+               <>
+                 <div className="flex items-center justify-between gap-6">
+                    <span className="text-xs font-bold text-foreground">Active Nodes</span>
+                    <span className="text-sm font-black text-green-500">5 / 5</span>
+                 </div>
+                 <div className="flex items-center justify-between gap-6">
+                    <span className="text-xs font-bold text-foreground">Coverage Area</span>
+                    <span className="text-sm font-black text-foreground">14.2 km²</span>
+                 </div>
+               </>
+             ) : (
+               <>
+                 <div className="flex items-center justify-between gap-6">
+                    <span className="text-xs font-bold text-foreground">Selected</span>
+                    <span className="text-sm font-black text-green-500">{selectedDistrict || "None"}</span>
+                 </div>
+                 <div className="flex items-center justify-between gap-6">
+                    <span className="text-xs font-bold text-foreground">Stat</span>
+                    <span className="text-sm font-black text-foreground">{selectedDistrict ? "85% Yield" : "-"}</span>
+                 </div>
+               </>
+             )}
           </div>
         </div>
       </div>
