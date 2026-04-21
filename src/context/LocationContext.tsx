@@ -17,8 +17,8 @@ interface LocationContextType extends LocationData {
   setSelectedDistrict: (district: string | null) => void;
 }
 
-// Default fallback: Hyderabad, India
-const FALLBACK = { lat: 17.385, lon: 78.4867, locationName: "Hyderabad, Telangana, India", city: "Hyderabad" };
+// Default fallback: Machilipatnam, Andhra Pradesh, India
+const FALLBACK = { lat: 16.18, lon: 81.13, locationName: "Machilipatnam, Andhra Pradesh, India", city: "Machilipatnam" };
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
 
@@ -47,14 +47,15 @@ export const LocationProvider = ({ children }: { children: React.ReactNode }) =>
         const age = Date.now() - (parsed._ts || 0);
         // Use cache if less than 30 minutes old
         if (age < 30 * 60 * 1000 && parsed.lat && parsed.lon) {
-          setState({
+          setState(prev => ({
+            ...prev,
             lat: parsed.lat,
             lon: parsed.lon,
             locationName: parsed.locationName || FALLBACK.locationName,
             city: parsed.city || FALLBACK.city,
             loading: false,
             error: null,
-          });
+          }));
           // Also send to backend silently
           sendLocationToBackend(parsed.lat, parsed.lon, parsed.locationName);
           return;
@@ -98,14 +99,15 @@ export const LocationProvider = ({ children }: { children: React.ReactNode }) =>
           const cacheData = { lat: latitude, lon: longitude, locationName, city, _ts: Date.now() };
           localStorage.setItem("cropinsight_location", JSON.stringify(cacheData));
 
-          setState({
+          setState(prev => ({
+            ...prev,
             lat: latitude,
             lon: longitude,
             locationName,
             city,
             loading: false,
             error: null,
-          });
+          }));
 
           // Send to backend
           sendLocationToBackend(latitude, longitude, locationName);
@@ -115,14 +117,15 @@ export const LocationProvider = ({ children }: { children: React.ReactNode }) =>
           const cacheData = { lat: latitude, lon: longitude, locationName: FALLBACK.locationName, city: FALLBACK.city, _ts: Date.now() };
           localStorage.setItem("cropinsight_location", JSON.stringify(cacheData));
 
-          setState({
+          setState(prev => ({
+            ...prev,
             lat: latitude,
             lon: longitude,
             locationName: FALLBACK.locationName,
             city: FALLBACK.city,
             loading: false,
             error: "Reverse geocoding failed",
-          });
+          }));
           sendLocationToBackend(latitude, longitude, FALLBACK.locationName);
         }
       },
@@ -137,14 +140,15 @@ export const LocationProvider = ({ children }: { children: React.ReactNode }) =>
   const applyFallback = (errorMsg: string) => {
     const cacheData = { ...FALLBACK, _ts: Date.now() };
     localStorage.setItem("cropinsight_location", JSON.stringify(cacheData));
-    setState({
+    setState(prev => ({
+      ...prev,
       lat: FALLBACK.lat,
       lon: FALLBACK.lon,
       locationName: FALLBACK.locationName,
       city: FALLBACK.city,
       loading: false,
       error: errorMsg,
-    });
+    }));
   };
 
   const sendLocationToBackend = async (lat: number, lon: number, locationName: string) => {
@@ -177,6 +181,12 @@ export const LocationProvider = ({ children }: { children: React.ReactNode }) =>
   const setSelectedDistrict = (district: string | null) => {
     setState(prev => ({ ...prev, selectedDistrict: district }));
   };
+
+  const refreshLocation = useCallback(() => {
+    // Clear cache and re-detect
+    localStorage.removeItem("cropinsight_location");
+    detectLocation();
+  }, [detectLocation]);
 
   return (
     <LocationContext.Provider value={{ ...state, refreshLocation, setMode, setSelectedDistrict }}>

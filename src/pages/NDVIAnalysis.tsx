@@ -6,6 +6,8 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts";
 import { useLiveWeather, DISTRICT_COORDS } from "@/hooks/useLiveWeather";
+import { useGlobalLocation } from "@/context/LocationContext";
+import { useLocation } from "react-router-dom";
 
 // Build state → districts map from DISTRICT_COORDS
 const stateDistrictsMap = Object.entries(DISTRICT_COORDS).reduce((acc, [dist, info]) => {
@@ -40,22 +42,32 @@ function getStatusConfig(ndvi: number) {
 }
 
 const NDVIAnalysis = () => {
-  const [state, setState] = useState("Maharashtra");
-  const [district, setDistrictState] = useState(stateDistrictsMap["Maharashtra"][0]);
+  const { 
+    selectedDistrict: globalDistrict, 
+    setSelectedDistrict: setGlobalDistrict,
+    mode,
+    setMode
+  } = useGlobalLocation();
+
+  const [localState, setLocalState] = useState("Andhra Pradesh");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const { data: envData, setDistrict } = useLiveWeather(district);
+  const activeDistrict = globalDistrict || stateDistrictsMap[localState]?.[0] || "Visakhapatnam";
+
+  const { data: envData, setDistrict } = useLiveWeather(activeDistrict);
 
   const handleStateChange = (newState: string) => {
-    setState(newState);
+    setLocalState(newState);
     const first = stateDistrictsMap[newState]?.[0] || "";
-    setDistrictState(first);
+    setGlobalDistrict(first);
     setDistrict(first);
+    setMode("district");
   };
 
   const handleDistrictChange = (d: string) => {
-    setDistrictState(d);
+    setGlobalDistrict(d);
     setDistrict(d);
+    setMode("district");
   };
 
   const refresh = () => setRefreshKey(k => k + 1);
@@ -89,16 +101,16 @@ const NDVIAnalysis = () => {
         <div className="flex items-center gap-3 p-1.5 rounded-3xl bg-muted/20 border border-border/5 backdrop-blur-md shadow-xl">
           <div className="flex flex-col px-3 border-r border-border/10">
             <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest">State</span>
-            <select value={state} onChange={e => handleStateChange(e.target.value)}
+            <select value={localState} onChange={e => handleStateChange(e.target.value)}
               className="bg-transparent border-none appearance-none font-black text-sm text-foreground cursor-pointer outline-none w-28">
               {states.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div className="flex flex-col px-3">
             <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest">District</span>
-            <select value={district} onChange={e => handleDistrictChange(e.target.value)}
+            <select value={activeDistrict} onChange={e => handleDistrictChange(e.target.value)}
               className="bg-transparent border-none appearance-none font-black text-sm text-foreground cursor-pointer outline-none w-28">
-              {stateDistrictsMap[state]?.map(d => <option key={d} value={d}>{d}</option>)}
+              {stateDistrictsMap[localState]?.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
           <div className="flex gap-2 px-2">
@@ -122,7 +134,9 @@ const NDVIAnalysis = () => {
 
             <div className="flex items-center gap-2 mb-6">
               <div className={`w-2 h-2 rounded-full ${cfg.bar} animate-pulse shadow-lg`} />
-              <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">Live Sensor · {district}</span>
+              <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">
+                {mode === "current" ? "Live Location" : "District Intel"} · {activeDistrict}
+              </span>
             </div>
 
             <AnimatePresence mode="wait">
@@ -132,7 +146,7 @@ const NDVIAnalysis = () => {
                   <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">Syncing satellite...</span>
                 </div>
               ) : (
-                <motion.div key={district + ndvi} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
+                <motion.div key={activeDistrict + ndvi} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
                   <div className="flex items-end gap-3 mb-2">
                     <span className="text-6xl font-black text-foreground tracking-tighter">{ndvi.toFixed(3)}</span>
                   </div>
@@ -201,7 +215,7 @@ const NDVIAnalysis = () => {
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h3 className="font-display font-black text-xl text-foreground tracking-tight">Seasonal Growth Trend</h3>
-                <p className="text-xs text-muted-foreground font-medium mt-0.5">Estimated NDVI curve for {district} — 12-month projection</p>
+                <p className="text-xs text-muted-foreground font-medium mt-0.5">Estimated NDVI curve for {activeDistrict} — 12-month projection</p>
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-green-500/10 border border-green-500/20">
                 <Zap className="w-3 h-3 text-green-400" />
@@ -259,7 +273,7 @@ const NDVIAnalysis = () => {
               </div>
               <div>
                 <h4 className="font-display font-black text-sm text-foreground">Next Sentinel-2 Overpass</h4>
-                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">Scheduled in 4 days · {district} Sector</p>
+                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">Scheduled in 4 days · {activeDistrict} Sector</p>
               </div>
             </div>
             <button className="px-5 py-2.5 rounded-2xl bg-indigo-500/80 text-[10px] font-black text-white hover:bg-indigo-600 transition-all shadow-xl shadow-indigo-500/20">

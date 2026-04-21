@@ -49,10 +49,20 @@ const StatCard = ({
 );
 
 const Dashboard = () => {
-  const userLocation = useGlobalLocation();
+  const { 
+    lat: userLat, 
+    lon: userLon, 
+    mode, 
+    setMode, 
+    selectedDistrict: globalDistrict, 
+    setSelectedDistrict: setGlobalDistrict,
+    locationName,
+    refreshLocation,
+    loading: locationLoading
+  } = useGlobalLocation();
+
   const [selectedCrop, setSelectedCrop] = useState("Rice");
-  const [selectedState, setSelectedState] = useState("Maharashtra");
-  const [selectedDistrict, setSelectedDistrict] = useState(stateDistrictsMap["Maharashtra"][0]);
+  const [selectedState, setSelectedState] = useState("Andhra Pradesh");
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<any>(null);
 
@@ -60,7 +70,8 @@ const Dashboard = () => {
 
   const handleStateChange = (state: string) => {
     setSelectedState(state);
-    setSelectedDistrict(stateDistrictsMap[state]?.[0] || "");
+    const firstDist = stateDistrictsMap[state]?.[0] || "";
+    setGlobalDistrict(firstDist);
   };
 
   useEffect(() => {
@@ -68,13 +79,13 @@ const Dashboard = () => {
       setLoading(true);
       try {
         // Preference: Browser Geoloc -> Selected District Lookup -> Default Pune
-        let lat = userLocation.lat;
-        let lon = userLocation.lon;
+        let lat = userLat;
+        let lon = userLon;
         
-        if (!lat || !lon) {
-           const lookup = DISTRICT_COORDS[selectedDistrict];
-           lat = lookup?.lat || 18.5204;
-           lon = lookup?.lon || 73.8567;
+        if (mode === "district" || !lat || !lon) {
+           const lookup = DISTRICT_COORDS[globalDistrict || ""];
+           lat = lookup?.lat || 15.9129;
+           lon = lookup?.lon || 79.74;
         }
 
         const res = await yieldService.getDashboard(lat, lon, selectedCrop);
@@ -86,7 +97,7 @@ const Dashboard = () => {
       }
     };
     fetchDashboardData();
-  }, [selectedDistrict, selectedCrop, userLocation.lat, userLocation.lon]);
+  }, [globalDistrict, mode, selectedCrop, userLat, userLon]);
 
   return (
     <div className="flex flex-col gap-8 relative z-20 max-w-[1500px] mx-auto pb-10">
@@ -103,15 +114,15 @@ const Dashboard = () => {
           </h1>
           <div className="flex items-center gap-3 flex-wrap">
             <p className="text-sm text-muted-foreground font-medium max-w-2xl">
-              High-precision monitoring for <span className="text-green-500 font-bold">{userLocation.locationName || `${selectedDistrict}, ${selectedState}`}</span>. 
+              High-precision monitoring for <span className="text-green-500 font-bold">{mode === "current" ? locationName : `${globalDistrict}, ${selectedState}`}</span>. 
               Synthesizing multi-source satellite reflectance and historical weather patterns.
             </p>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-green-500/5 border border-green-500/10">
               <Navigation className="w-3 h-3 text-green-500" />
               <span className="text-[9px] font-black text-green-500 uppercase tracking-widest">
-                {userLocation.loading ? "Detecting..." : "📍 Auto-Detected"}
+                {locationLoading ? "Detecting..." : mode === "current" ? "📍 Auto-Detected" : "📍 Manual Selection"}
               </span>
-              <button onClick={userLocation.refreshLocation} className="ml-1 p-1 rounded-lg hover:bg-green-500/10 transition-colors" title="Refresh Location">
+              <button onClick={refreshLocation} className="ml-1 p-1 rounded-lg hover:bg-green-500/10 transition-colors" title="Refresh Location">
                 <RefreshCw className="w-3 h-3 text-green-500" />
               </button>
             </div>
@@ -140,16 +151,20 @@ const Dashboard = () => {
                {states.map((s) => (<option key={s} value={s}>{s}</option>))}
              </select>
           </div>
-          <div className="flex flex-col px-3 gap-0.5">
-             <span className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-tighter">District</span>
-             <select
-               value={selectedDistrict}
-               onChange={(e) => setSelectedDistrict(e.target.value)}
-               className="bg-transparent border-none appearance-none font-black text-xs text-foreground cursor-pointer outline-none"
-             >
-               {districts.map((d) => (<option key={d} value={d}>{d}</option>))}
-             </select>
-          </div>
+           <div className="flex flex-col px-3 gap-0.5">
+              <span className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-tighter">District</span>
+              <select
+                value={globalDistrict || ""}
+                onChange={(e) => {
+                  setGlobalDistrict(e.target.value);
+                  setMode("district");
+                }}
+                className="bg-transparent border-none appearance-none font-black text-xs text-foreground cursor-pointer outline-none"
+              >
+                {!globalDistrict && <option value="">Select District</option>}
+                {districts.map((d) => (<option key={d} value={d}>{d}</option>))}
+              </select>
+           </div>
           <button className="h-12 w-12 rounded-2xl bg-green-500 text-white flex items-center justify-center shadow-xl shadow-green-500/20 hover:scale-105 transition-transform ml-2">
              <MapPin className="w-5 h-5" />
           </button>
@@ -229,7 +244,7 @@ const Dashboard = () => {
 
       {/* Geospatial Intelligence */}
       <div className="grid grid-cols-1 gap-8">
-        <MapVisualization district={selectedDistrict} state={selectedState} />
+        <MapVisualization district={globalDistrict || ""} state={selectedState} />
       </div>
 
       {/* Bottom Insights */}

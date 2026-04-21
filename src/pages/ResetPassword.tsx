@@ -1,9 +1,9 @@
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { authService } from "@/services/api";
 import { motion } from "framer-motion";
 import { Lock, Leaf, Loader2, ArrowLeft, ShieldCheck, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 
 const ParticleBackground = lazy(() => import("../components/ParticleBackground"));
 

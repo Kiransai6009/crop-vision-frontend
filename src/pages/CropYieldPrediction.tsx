@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sprout, SearchCheck, TrendingUp, HelpCircle, Loader2, CloudRain, Thermometer, Droplets, Leaf } from "lucide-react";
 import { yieldService } from "@/services/api";
 import { useLiveWeather, DISTRICT_COORDS } from "@/hooks/useLiveWeather";
+import { useGlobalLocation } from "@/context/LocationContext";
 
 const crops = ["Rice", "Wheat", "Maize", "Soybean", "Cotton", "Sugarcane", "Jowar", "Groundnut", "Sunflower"];
 
@@ -16,25 +17,34 @@ const stateDistrictsMap = Object.entries(DISTRICT_COORDS).reduce((acc, [dist, in
 const states = Object.keys(stateDistrictsMap).sort();
 
 const CropYieldPrediction = () => {
+  const { 
+    selectedDistrict: globalDistrict, 
+    setSelectedDistrict: setGlobalDistrict,
+    mode,
+    setMode
+  } = useGlobalLocation();
+
   const [crop, setCrop] = useState("Rice");
-  const [state, setState] = useState("Maharashtra");
-  const [district, setDistrictState] = useState(stateDistrictsMap["Maharashtra"][0]);
+  const [localState, setLocalState] = useState("Andhra Pradesh");
   const [loading, setLoading] = useState(false);
   const [prediction, setPrediction] = useState<string | null>(null);
 
+  const activeDistrict = globalDistrict || stateDistrictsMap[localState]?.[0] || "Visakhapatnam";
+
   // Hook into REAL local weather & pseudo-NDVI data
-  const { data: envData, setDistrict: fetchEnvForDistrict } = useLiveWeather(district);
+  const { data: envData, setDistrict: fetchEnvForDistrict } = useLiveWeather(activeDistrict);
 
   // Update backend sync when district changes
   useEffect(() => {
-    fetchEnvForDistrict(district);
+    fetchEnvForDistrict(activeDistrict);
     setPrediction(null); // reset prediction when region changes
-  }, [district, fetchEnvForDistrict]);
+  }, [activeDistrict, fetchEnvForDistrict]);
 
   const handleStateChange = (newState: string) => {
-    setState(newState);
+    setLocalState(newState);
     const firstDistrict = stateDistrictsMap[newState]?.[0] || "";
-    setDistrictState(firstDistrict);
+    setGlobalDistrict(firstDistrict);
+    setMode("district");
   };
 
   const handlePredict = async (e: React.FormEvent) => {
@@ -102,7 +112,7 @@ const CropYieldPrediction = () => {
                     <div className="space-y-2">
                        <label className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest px-1">State / Region</label>
                        <select 
-                          value={state}
+                          value={localState}
                           onChange={(e) => handleStateChange(e.target.value)}
                           className="w-full h-12 px-4 rounded-2xl bg-muted/20 border border-border/10 text-sm font-bold text-foreground focus:ring-2 focus:ring-green-500/20 outline-none transition-all appearance-none cursor-pointer"
                        >
@@ -112,11 +122,14 @@ const CropYieldPrediction = () => {
                     <div className="space-y-2">
                        <label className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest px-1">District Focus</label>
                        <select 
-                          value={district}
-                          onChange={(e) => setDistrictState(e.target.value)}
+                          value={activeDistrict}
+                          onChange={(e) => {
+                             setGlobalDistrict(e.target.value);
+                             setMode("district");
+                          }}
                           className="w-full h-12 px-4 rounded-2xl bg-muted/20 border border-border/10 text-sm font-bold text-foreground focus:ring-2 focus:ring-green-500/20 outline-none transition-all appearance-none cursor-pointer"
                        >
-                          {stateDistrictsMap[state]?.map((d) => (<option key={d} value={d}>{d}</option>))}
+                          {stateDistrictsMap[localState]?.map((d) => (<option key={d} value={d}>{d}</option>))}
                        </select>
                     </div>
                  </div>
@@ -175,7 +188,7 @@ const CropYieldPrediction = () => {
                   </div>
                   <h4 className="font-display font-black text-lg text-foreground tracking-tight">AI Report Generator</h4>
                   <p className="text-xs text-muted-foreground mt-2 max-w-[250px] leading-relaxed">
-                     Awaiting computation. Ensure Live ML Inputs are synced before generating your localized {crop} harvest model for {district}.
+                     Awaiting computation. Ensure Live ML Inputs are synced before generating your localized {crop} harvest model for {activeDistrict}.
                   </p>
                </motion.div>
              ) : loading ? (
@@ -200,7 +213,7 @@ const CropYieldPrediction = () => {
                            <div className="text-[9px] font-bold text-white/60 uppercase">ML ENGINE V4</div>
                         </div>
                         <h3 className="text-4xl font-black tracking-tighter leading-none mb-2 text-white">PROJECTED<br/>HARVEST</h3>
-                        <p className="text-sm font-bold text-white/80">Estimated yield for <span className="underline decoration-white/40">{crop}</span> in <span className="text-white bg-black/10 px-1 rounded">{district}, {state}</span></p>
+                        <p className="text-sm font-bold text-white/80">Estimated yield for <span className="underline decoration-white/40">{crop}</span> in <span className="text-white bg-black/10 px-1 rounded">{activeDistrict}, {localState}</span></p>
                      </div>
 
                      <div className="flex items-end gap-3 py-8 border-y border-white/10 my-4 bg-black/5 rounded-3xl px-6">
