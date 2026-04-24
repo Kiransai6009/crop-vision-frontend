@@ -17,6 +17,13 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertTriangle, CheckCircle, CloudRain, Thermometer, Leaf, ShieldCheck, Zap, Wifi, MapPin, RefreshCw } from "lucide-react";
 import { useLiveWeather, DISTRICT_NAMES } from "../../hooks/useLiveWeather";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /* ── Risk Rule definitions ────────────────────────────────────────── */
 interface RiskRule {
@@ -119,13 +126,18 @@ const RiskAlertSystem = () => {
                     {/* Live fill row */}
                     <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-border">
                         <Wifi className={`w-3.5 h-3.5 ${liveData.status === "live" ? "text-green-500" : "text-muted-foreground"}`} />
-                        <select
+                        <Select
                             value={liveDistrict}
-                            onChange={e => setLiveDistrict(e.target.value)}
-                            className="flex-1 text-xs px-2 py-1.5 rounded-lg bg-muted border border-border text-foreground focus:outline-none"
+                            onValueChange={setLiveDistrict}
                         >
-                            {DISTRICT_NAMES.map(d => <option key={d} value={d}>{d}</option>)}
-                        </select>
+                            <SelectTrigger className="flex-1 text-xs px-2 py-1.5 h-auto bg-muted border border-border rounded-lg">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {DISTRICT_NAMES.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+
                         <button
                             onClick={fillLive}
                             className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-medium hover:bg-blue-600 transition-colors"

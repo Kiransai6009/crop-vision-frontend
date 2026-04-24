@@ -48,6 +48,14 @@ const StatCard = ({
   </motion.div>
 );
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 const Dashboard = () => {
   const { 
     lat: userLat, 
@@ -133,43 +141,61 @@ const Dashboard = () => {
         <div className="flex flex-wrap items-center gap-4 p-2 rounded-3xl bg-muted/20 border border-border/5 backdrop-blur-md shadow-2xl">
           <div className="flex flex-col px-3 gap-0.5 border-r border-border/10">
              <span className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-tighter">Commodity</span>
-             <select
-               value={selectedCrop}
-               onChange={(e) => setSelectedCrop(e.target.value)}
-               className="bg-transparent border-none appearance-none font-black text-xs text-foreground cursor-pointer outline-none"
-             >
-               {crops.map((c) => (<option key={c} value={c}>{c}</option>))}
-             </select>
+             <Select value={selectedCrop} onValueChange={setSelectedCrop}>
+               <SelectTrigger className="bg-transparent border-none font-black text-xs h-auto p-0 hover:bg-transparent focus:ring-0">
+                 <SelectValue />
+               </SelectTrigger>
+               <SelectContent>
+                 {crops.map((c) => (
+                   <SelectItem key={c} value={c}>
+                     {c}
+                   </SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
           </div>
           <div className="flex flex-col px-3 gap-0.5 border-r border-border/10">
              <span className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-tighter">Region</span>
-             <select
-               value={selectedState}
-               onChange={(e) => handleStateChange(e.target.value)}
-               className="bg-transparent border-none appearance-none font-black text-xs text-foreground cursor-pointer outline-none"
-             >
-               {states.map((s) => (<option key={s} value={s}>{s}</option>))}
-             </select>
+             <Select value={selectedState} onValueChange={handleStateChange}>
+               <SelectTrigger className="bg-transparent border-none font-black text-xs h-auto p-0 hover:bg-transparent focus:ring-0">
+                 <SelectValue />
+               </SelectTrigger>
+               <SelectContent>
+                 {states.map((s) => (
+                   <SelectItem key={s} value={s}>
+                     {s}
+                   </SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
           </div>
            <div className="flex flex-col px-3 gap-0.5">
               <span className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-tighter">District</span>
-              <select
-                value={globalDistrict || ""}
-                onChange={(e) => {
-                  setGlobalDistrict(e.target.value);
+              <Select 
+                value={globalDistrict || ""} 
+                onValueChange={(val) => {
+                  setGlobalDistrict(val);
                   setMode("district");
                 }}
-                className="bg-transparent border-none appearance-none font-black text-xs text-foreground cursor-pointer outline-none"
               >
-                {!globalDistrict && <option value="">Select District</option>}
-                {districts.map((d) => (<option key={d} value={d}>{d}</option>))}
-              </select>
+                <SelectTrigger className="bg-transparent border-none font-black text-xs h-auto p-0 hover:bg-transparent focus:ring-0">
+                  <SelectValue placeholder="Select District" />
+                </SelectTrigger>
+                <SelectContent>
+                  {districts.map((d) => (
+                    <SelectItem key={d} value={d}>
+                      {d}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
            </div>
           <button className="h-12 w-12 rounded-2xl bg-green-500 text-white flex items-center justify-center shadow-xl shadow-green-500/20 hover:scale-105 transition-transform ml-2">
              <MapPin className="w-5 h-5" />
           </button>
         </div>
       </div>
+
 
       {/* KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

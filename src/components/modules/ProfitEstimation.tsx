@@ -39,6 +39,14 @@ const AnimatedNumber = ({ value }: { value: number }) => (
     </motion.span>
 );
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 const ProfitEstimation = () => {
     const [crop, setCrop] = useState("Rice");
     const [yield_, setYield] = useState("2.8");
@@ -135,16 +143,21 @@ const ProfitEstimation = () => {
                     {/* Crop selector */}
                     <label className="block">
                         <span className="text-sm text-muted-foreground mb-1 block">Crop Type</span>
-                        <select
-                            value={crop}
-                            onChange={(e) => { setCrop(e.target.value); setCalculated(false); }}
-                            className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        <Select 
+                           value={crop} 
+                           onValueChange={(val) => { setCrop(val); setCalculated(false); }}
                         >
-                            {Object.keys(CROP_COSTS).map(c => (
-                                <option key={c} value={c}>{c}</option>
-                            ))}
-                        </select>
+                           <SelectTrigger className="w-full px-3 py-2 rounded-lg bg-muted border border-border text-foreground text-sm">
+                              <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                              {Object.keys(CROP_COSTS).map(c => (
+                                 <SelectItem key={c} value={c}>{c}</SelectItem>
+                              ))}
+                           </SelectContent>
+                        </Select>
                     </label>
+
 
                     {/* Yield per hectare */}
                     <label className="block">

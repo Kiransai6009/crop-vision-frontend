@@ -41,6 +41,14 @@ function getStatusConfig(ndvi: number) {
   return                   { status: "Critical",  color: "text-red-400",     bg: "bg-red-500/10",     border: "border-red-500/20",     bar: "bg-red-400",     pct: 15 };
 }
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 const NDVIAnalysis = () => {
   const { 
     selectedDistrict: globalDistrict, 
@@ -101,18 +109,35 @@ const NDVIAnalysis = () => {
         <div className="flex items-center gap-3 p-1.5 rounded-3xl bg-muted/20 border border-border/5 backdrop-blur-md shadow-xl">
           <div className="flex flex-col px-3 border-r border-border/10">
             <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest">State</span>
-            <select value={localState} onChange={e => handleStateChange(e.target.value)}
-              className="bg-transparent border-none appearance-none font-black text-sm text-foreground cursor-pointer outline-none w-28">
-              {states.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <Select value={localState} onValueChange={handleStateChange}>
+              <SelectTrigger className="bg-transparent border-none font-black text-sm h-auto p-0 hover:bg-transparent focus:ring-0 w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {states.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-col px-3">
             <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest">District</span>
-            <select value={activeDistrict} onChange={e => handleDistrictChange(e.target.value)}
-              className="bg-transparent border-none appearance-none font-black text-sm text-foreground cursor-pointer outline-none w-28">
-              {stateDistrictsMap[localState]?.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <Select value={activeDistrict} onValueChange={handleDistrictChange}>
+              <SelectTrigger className="bg-transparent border-none font-black text-sm h-auto p-0 hover:bg-transparent focus:ring-0 w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {stateDistrictsMap[localState]?.map((d) => (
+                  <SelectItem key={d} value={d}>
+                    {d}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
           <div className="flex gap-2 px-2">
             <button onClick={refresh} className="w-10 h-10 rounded-2xl bg-green-500 text-white flex items-center justify-center shadow-lg shadow-green-500/20 hover:bg-green-600 transition-all">
               <RefreshCw className="w-4 h-4" />

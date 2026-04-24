@@ -16,6 +16,14 @@ const stateDistrictsMap = Object.entries(DISTRICT_COORDS).reduce((acc, [dist, in
 
 const states = Object.keys(stateDistrictsMap).sort();
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 const CropYieldPrediction = () => {
   const { 
     selectedDistrict: globalDistrict, 
@@ -111,28 +119,45 @@ const CropYieldPrediction = () => {
                  <div className="grid sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                        <label className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest px-1">State / Region</label>
-                       <select 
+                       <Select 
                           value={localState}
-                          onChange={(e) => handleStateChange(e.target.value)}
-                          className="w-full h-12 px-4 rounded-2xl bg-muted/20 border border-border/10 text-sm font-bold text-foreground focus:ring-2 focus:ring-green-500/20 outline-none transition-all appearance-none cursor-pointer"
+                          onValueChange={handleStateChange}
                        >
-                          {states.map((s) => (<option key={s} value={s}>{s}</option>))}
-                       </select>
+                          <SelectTrigger className="w-full h-12 px-4 rounded-2xl bg-muted/20 border border-border/10 text-sm font-bold text-foreground">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {states.map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {s}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                       </Select>
                     </div>
                     <div className="space-y-2">
                        <label className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest px-1">District Focus</label>
-                       <select 
+                       <Select 
                           value={activeDistrict}
-                          onChange={(e) => {
-                             setGlobalDistrict(e.target.value);
+                          onValueChange={(val) => {
+                             setGlobalDistrict(val);
                              setMode("district");
                           }}
-                          className="w-full h-12 px-4 rounded-2xl bg-muted/20 border border-border/10 text-sm font-bold text-foreground focus:ring-2 focus:ring-green-500/20 outline-none transition-all appearance-none cursor-pointer"
                        >
-                          {stateDistrictsMap[localState]?.map((d) => (<option key={d} value={d}>{d}</option>))}
-                       </select>
+                          <SelectTrigger className="w-full h-12 px-4 rounded-2xl bg-muted/20 border border-border/10 text-sm font-bold text-foreground">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {stateDistrictsMap[localState]?.map((d) => (
+                              <SelectItem key={d} value={d}>
+                                {d}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                       </Select>
                     </div>
                  </div>
+
 
                  {/* Live Parameters Preview */}
                  <div className="pt-4 border-t border-border/10">

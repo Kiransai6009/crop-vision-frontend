@@ -24,6 +24,13 @@ import {
 } from "lucide-react";
 import { yieldService } from "../../services/api";
 import { useLiveWeather, DISTRICT_NAMES } from "../../hooks/useLiveWeather";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /* ── Types ──────────────────────────────────────────────────────────── */
 interface FormData {
@@ -92,7 +99,6 @@ const computeNdviFromImage = (file: File): Promise<number> =>
         img.src = url;
     });
 
-/* ── Component ─────────────────────────────────────────────────────── */
 const YieldPrediction = () => {
     const [form, setForm] = useState<FormData>({
         rainfall: "", temperature: "", humidity: "", nirValue: "", redValue: ""
@@ -247,15 +253,20 @@ const YieldPrediction = () => {
                     </div>
 
                     {/* District selector */}
-                    <select
+                    <Select
                         value={liveDistrict}
-                        onChange={e => setLiveDistrict(e.target.value)}
-                        className="flex-1 min-w-[200px] px-4 py-2 rounded-xl bg-background/50 border border-border/40 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-medium"
+                        onValueChange={setLiveDistrict}
                     >
-                        {DISTRICT_NAMES.map(d => (
-                            <option key={d} value={d}>{d}</option>
-                        ))}
-                    </select>
+                        <SelectTrigger className="flex-1 min-w-[200px] px-4 py-2 h-auto rounded-xl bg-background/50 border border-border/40 text-sm">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {DISTRICT_NAMES.map(d => (
+                                <SelectItem key={d} value={d}>{d}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
 
                     <button
                         onClick={fillFromLive}

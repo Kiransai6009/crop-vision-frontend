@@ -12,6 +12,14 @@ const stateDistrictsMap = Object.entries(DISTRICT_COORDS).reduce((acc, [dist, in
 
 const states = Object.keys(stateDistrictsMap).sort();
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 const WeatherAnalytics = () => {
   const [state, setState] = useState("Maharashtra");
   const [district, setDistrictState] = useState(stateDistrictsMap["Maharashtra"][0]);
@@ -53,24 +61,35 @@ const WeatherAnalytics = () => {
          <div className="flex items-center gap-3 p-1.5 rounded-3xl bg-muted/20 border border-border/5 backdrop-blur-md shadow-xl">
             <div className="flex flex-col px-3 border-r border-border/10">
                <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest">Region</span>
-               <select 
-                 value={state}
-                 onChange={(e) => handleStateChange(e.target.value)}
-                 className="bg-transparent border-none appearance-none font-black text-xs text-foreground cursor-pointer outline-none w-28"
-               >
-                 {states.map((s) => (<option key={s} value={s}>{s}</option>))}
-               </select>
+               <Select value={state} onValueChange={handleStateChange}>
+                 <SelectTrigger className="bg-transparent border-none font-black text-xs h-auto p-0 hover:bg-transparent focus:ring-0 w-28">
+                   <SelectValue />
+                 </SelectTrigger>
+                 <SelectContent>
+                   {states.map((s) => (
+                     <SelectItem key={s} value={s}>
+                       {s}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
             </div>
             <div className="flex flex-col px-3">
                <span className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-widest">District Focus</span>
-               <select 
-                 value={district}
-                 onChange={(e) => handleDistrictChange(e.target.value)}
-                 className="bg-transparent border-none appearance-none font-black text-xs text-foreground cursor-pointer outline-none w-28"
-               >
-                 {stateDistrictsMap[state]?.map((d) => (<option key={d} value={d}>{d}</option>))}
-               </select>
+               <Select value={district} onValueChange={handleDistrictChange}>
+                 <SelectTrigger className="bg-transparent border-none font-black text-xs h-auto p-0 hover:bg-transparent focus:ring-0 w-28">
+                   <SelectValue />
+                 </SelectTrigger>
+                 <SelectContent>
+                   {stateDistrictsMap[state]?.map((d) => (
+                     <SelectItem key={d} value={d}>
+                       {d}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
             </div>
+
             <button className="h-10 w-10 rounded-2xl bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
                <MapPin className="w-4 h-4" />
             </button>

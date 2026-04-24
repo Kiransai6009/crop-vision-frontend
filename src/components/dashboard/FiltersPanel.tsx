@@ -1,4 +1,11 @@
 import { motion } from "framer-motion";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface FiltersPanelProps {
   crops: string[];
@@ -34,60 +41,54 @@ export const FiltersPanel = ({
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
             Target Crop
           </label>
-          <div className="relative">
-            <select
-              value={selectedCrop}
-              onChange={(e) => onCropChange(e.target.value)}
-              className="w-full h-12 px-4 rounded-xl bg-muted/30 border border-border/50 text-foreground font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer transition-all hover:bg-muted/50"
-            >
+          <Select value={selectedCrop} onValueChange={onCropChange}>
+            <SelectTrigger className="w-full h-12 px-4 rounded-xl bg-muted/30 border border-border/50 text-foreground font-medium">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
               {crops.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <SelectItem key={c} value={c}>
+                  {c}
+                </SelectItem>
               ))}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground text-xs">
-              ▼
-            </div>
-          </div>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex-1 w-full">
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
             State
           </label>
-          <div className="relative">
-            <select
-              value={selectedState}
-              onChange={(e) => onStateChange(e.target.value)}
-              className="w-full h-12 px-4 rounded-xl bg-muted/30 border border-border/50 text-foreground font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer transition-all hover:bg-muted/50"
-            >
+          <Select value={selectedState} onValueChange={onStateChange}>
+            <SelectTrigger className="w-full h-12 px-4 rounded-xl bg-muted/30 border border-border/50 text-foreground font-medium">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
               {states.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
               ))}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground text-xs">
-              ▼
-            </div>
-          </div>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex-1 w-full">
           <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
             District / Region
           </label>
-          <div className="relative">
-            <select
-              value={selectedDistrict}
-              onChange={(e) => onDistrictChange(e.target.value)}
-              className="w-full h-12 px-4 rounded-xl bg-muted/30 border border-border/50 text-foreground font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none cursor-pointer transition-all hover:bg-muted/50"
-            >
+          <Select value={selectedDistrict} onValueChange={onDistrictChange}>
+            <SelectTrigger className="w-full h-12 px-4 rounded-xl bg-muted/30 border border-border/50 text-foreground font-medium">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
               {districts.map((d) => (
-                <option key={d} value={d}>{d}</option>
+                <SelectItem key={d} value={d}>
+                  {d}
+                </SelectItem>
               ))}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground text-xs">
-              ▼
-            </div>
-          </div>
+            </SelectContent>
+          </Select>
         </div>
         
         <div className="w-full md:w-auto flex items-end">
