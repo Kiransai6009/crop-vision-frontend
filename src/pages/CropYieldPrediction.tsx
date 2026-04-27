@@ -29,6 +29,9 @@ const CropYieldPrediction = () => {
     selectedDistrict: globalDistrict, 
     setSelectedDistrict: setGlobalDistrict,
     mode,
+    city,
+    lat: userLat,
+    lon: userLon,
     setMode
   } = useGlobalLocation();
 
@@ -40,7 +43,10 @@ const CropYieldPrediction = () => {
   const activeDistrict = globalDistrict || stateDistrictsMap[localState]?.[0] || "Visakhapatnam";
 
   // Hook into REAL local weather & pseudo-NDVI data
-  const { data: envData, setDistrict: fetchEnvForDistrict } = useLiveWeather(activeDistrict);
+  const { data: envData, setDistrict: fetchEnvForDistrict } = useLiveWeather(
+    activeDistrict,
+    mode === "current" && userLat && userLon ? { lat: userLat, lon: userLon, state: "" } : undefined
+  );
 
   // Update backend sync when district changes
   useEffect(() => {
@@ -238,7 +244,7 @@ const CropYieldPrediction = () => {
                            <div className="text-[9px] font-bold text-white/60 uppercase">ML ENGINE V4</div>
                         </div>
                         <h3 className="text-4xl font-black tracking-tighter leading-none mb-2 text-white">PROJECTED<br/>HARVEST</h3>
-                        <p className="text-sm font-bold text-white/80">Estimated yield for <span className="underline decoration-white/40">{crop}</span> in <span className="text-white bg-black/10 px-1 rounded">{activeDistrict}, {localState}</span></p>
+                        <p className="text-sm font-bold text-white/80">Estimated yield for <span className="underline decoration-white/40">{crop}</span> in <span className="text-white bg-black/10 px-1 rounded">{mode === "current" ? city : activeDistrict}, {localState}</span></p>
                      </div>
 
                      <div className="flex items-end gap-3 py-8 border-y border-white/10 my-4 bg-black/5 rounded-3xl px-6">

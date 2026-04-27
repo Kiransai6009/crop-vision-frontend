@@ -36,98 +36,78 @@ export const LocationProvider = ({ children }: { children: React.ReactNode }) =>
     selectedDistrict: null,
   });
 
+  const handleNewCoordinates = useCallback(async (latitude: number, longitude: number) => {
+    try {
+      // Reverse geocode with Nominatim
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
+        { headers: { "Accept-Language": "en-US,en;q=0.9" } }
+      );
+
+      let locationName = FALLBACK.locationName;
+      let city = FALLBACK.city;
+
+      if (response.ok) {
+        const data = await response.json();
+        const address = data.address || {};
+        
+        // Extract city/town/village
+        let detectedCity = address.city || address.town || address.village || address.suburb || address.state_district || FALLBACK.city;
+        
+        // Normalize Machilipatnam
+        if (detectedCity.toLowerCase().includes("machilipatnam") || 
+            detectedCity.toLowerCase().includes("masulipatnam") ||
+            (address.county && address.county.toLowerCase().includes("machilipatnam"))) {
+          detectedCity = "Machilipatnam";
+        }
+        
+        city = detectedCity;
+        const stateName = address.state || "";
+        const country = address.country || "";
+        const parts = [city, stateName, country].filter(Boolean);
+        const unique = Array.from(new Set(parts));
+        locationName = unique.length > 0 ? unique.join(", ") : FALLBACK.locationName;
+      }
+
+      // Cache it
+      const cacheData = { lat: latitude, lon: longitude, locationName, city, _ts: Date.now() };
+      localStorage.setItem("cropinsight_location", JSON.stringify(cacheData));
+
+      setState(prev => ({
+        ...prev,
+        lat: latitude,
+        lon: longitude,
+        locationName,
+        city,
+        loading: false,
+        error: null,
+      }));
+
+      // Send to backend
+      sendLocationToBackend(latitude, longitude, locationName);
+    } catch (err) {
+      console.error("Reverse geocoding error:", err);
+      setState(prev => ({
+        ...prev,
+        lat: latitude,
+        lon: longitude,
+        loading: false,
+        error: "Reverse geocoding failed",
+      }));
+    }
+  }, []);
+
   const detectLocation = useCallback(() => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
-    // 1. Try cached location first (performance optimization)
-    const cached = localStorage.getItem("cropinsight_location");
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        const age = Date.now() - (parsed._ts || 0);
-        // Use cache if less than 30 minutes old
-        if (age < 30 * 60 * 1000 && parsed.lat && parsed.lon) {
-          setState(prev => ({
-            ...prev,
-            lat: parsed.lat,
-            lon: parsed.lon,
-            locationName: parsed.locationName || FALLBACK.locationName,
-            city: parsed.city || FALLBACK.city,
-            loading: false,
-            error: null,
-          }));
-          // Also send to backend silently
-          sendLocationToBackend(parsed.lat, parsed.lon, parsed.locationName);
-          return;
-        }
-      } catch (e) {
-        console.warn("Cache parse failed:", e);
-      }
-    }
-
-    // 2. Use Geolocation API
     if (!navigator.geolocation) {
       applyFallback("Geolocation is not supported by your browser");
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        try {
-          // Reverse geocode with Nominatim
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`,
-            { headers: { "Accept-Language": "en-US,en;q=0.9" } }
-          );
-
-          let locationName = FALLBACK.locationName;
-          let city = FALLBACK.city;
-
-          if (response.ok) {
-            const data = await response.json();
-            const address = data.address || {};
-            city = address.city || address.town || address.village || address.state_district || FALLBACK.city;
-            const stateName = address.state || "";
-            const country = address.country || "";
-            const parts = [city, stateName, country].filter(Boolean);
-            const unique = Array.from(new Set(parts));
-            locationName = unique.length > 0 ? unique.join(", ") : FALLBACK.locationName;
-          }
-
-          // Cache it
-          const cacheData = { lat: latitude, lon: longitude, locationName, city, _ts: Date.now() };
-          localStorage.setItem("cropinsight_location", JSON.stringify(cacheData));
-
-          setState(prev => ({
-            ...prev,
-            lat: latitude,
-            lon: longitude,
-            locationName,
-            city,
-            loading: false,
-            error: null,
-          }));
-
-          // Send to backend
-          sendLocationToBackend(latitude, longitude, locationName);
-        } catch (err) {
-          console.error("Reverse geocoding error:", err);
-          // Still use coords even if geocoding fails
-          const cacheData = { lat: latitude, lon: longitude, locationName: FALLBACK.locationName, city: FALLBACK.city, _ts: Date.now() };
-          localStorage.setItem("cropinsight_location", JSON.stringify(cacheData));
-
-          setState(prev => ({
-            ...prev,
-            lat: latitude,
-            lon: longitude,
-            locationName: FALLBACK.locationName,
-            city: FALLBACK.city,
-            loading: false,
-            error: "Reverse geocoding failed",
-          }));
-          sendLocationToBackend(latitude, longitude, FALLBACK.locationName);
-        }
+      (position) => {
+        handleNewCoordinates(position.coords.latitude, position.coords.longitude);
       },
       (err) => {
         console.warn(`Geolocation ERROR(${err.code}): ${err.message}`);
@@ -135,7 +115,7 @@ export const LocationProvider = ({ children }: { children: React.ReactNode }) =>
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, []);
+  }, [handleNewCoordinates]);
 
   const applyFallback = (errorMsg: string) => {
     const cacheData = { ...FALLBACK, _ts: Date.now() };
@@ -164,10 +144,28 @@ export const LocationProvider = ({ children }: { children: React.ReactNode }) =>
         body: JSON.stringify({ lat, lon, location_name: locationName }),
       });
     } catch (e) {
-      // Silent fail — location sync is non-critical
       console.warn("Location sync to backend failed:", e);
     }
   };
+
+  // Real-time updates with watchPosition
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        // Only update if moved significantly or if first time
+        handleNewCoordinates(latitude, longitude);
+      },
+      (err) => {
+        console.warn(`Geolocation Watch ERROR(${err.code}): ${err.message}`);
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 60000 }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [handleNewCoordinates]);
 
   // Initial detection on mount
   useEffect(() => {
@@ -183,7 +181,6 @@ export const LocationProvider = ({ children }: { children: React.ReactNode }) =>
   };
 
   const refreshLocation = useCallback(() => {
-    // Clear cache and re-detect
     localStorage.removeItem("cropinsight_location");
     detectLocation();
   }, [detectLocation]);

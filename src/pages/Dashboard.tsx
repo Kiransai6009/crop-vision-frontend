@@ -65,6 +65,7 @@ const Dashboard = () => {
     selectedDistrict: globalDistrict, 
     setSelectedDistrict: setGlobalDistrict,
     locationName,
+    city,
     refreshLocation,
     loading: locationLoading
   } = useGlobalLocation();
@@ -122,7 +123,7 @@ const Dashboard = () => {
           </h1>
           <div className="flex items-center gap-3 flex-wrap">
             <p className="text-sm text-muted-foreground font-medium max-w-2xl">
-              High-precision monitoring for <span className="text-green-500 font-bold">{mode === "current" ? locationName : `${globalDistrict}, ${selectedState}`}</span>. 
+              High-precision monitoring for <span className="text-green-500 font-bold">{mode === "current" ? city : `${globalDistrict}, ${selectedState}`}</span>. 
               Synthesizing multi-source satellite reflectance and historical weather patterns.
             </p>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-green-500/5 border border-green-500/10">

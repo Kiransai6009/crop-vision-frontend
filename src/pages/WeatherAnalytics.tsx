@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { CloudRain, Thermometer, Wind, CloudSun, Droplets, MapPin, Loader2, Calendar } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useLiveWeather, DISTRICT_COORDS } from "@/hooks/useLiveWeather";
+import { useGlobalLocation } from "@/context/LocationContext";
 
 const stateDistrictsMap = Object.entries(DISTRICT_COORDS).reduce((acc, [dist, info]) => {
   if (!acc[info.state]) acc[info.state] = [];
@@ -21,11 +22,26 @@ import {
 } from "@/components/ui/select";
 
 const WeatherAnalytics = () => {
+  const { 
+    selectedDistrict: globalDistrict, 
+    setSelectedDistrict: setGlobalDistrict,
+    mode,
+    city,
+    lat: userLat,
+    lon: userLon,
+    setMode
+  } = useGlobalLocation();
+
   const [state, setState] = useState("Maharashtra");
   const [district, setDistrictState] = useState(stateDistrictsMap["Maharashtra"][0]);
   
+  const activeDistrict = mode === "current" ? city : (globalDistrict || district);
+
   // Real-time weather hook
-  const { data: envData, setDistrict } = useLiveWeather(district);
+  const { data: envData, setDistrict } = useLiveWeather(
+    activeDistrict,
+    mode === "current" && userLat && userLon ? { lat: userLat, lon: userLon, state: "" } : undefined
+  );
 
   const handleStateChange = (newState: string) => {
     setState(newState);
@@ -109,7 +125,7 @@ const WeatherAnalytics = () => {
                <div>
                   <h1 className="text-4xl font-black text-white tracking-tighter">{isLoading ? "---" : current.condition}</h1>
                   <p className="text-[11px] text-white/70 font-bold uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
-                     <MapPin className="w-3 h-3" /> {district}, {state}
+                     <MapPin className="w-3 h-3" /> {mode === "current" ? city : `${district}, ${state}`}
                   </p>
                </div>
             </div>

@@ -54,6 +54,9 @@ const NDVIAnalysis = () => {
     selectedDistrict: globalDistrict, 
     setSelectedDistrict: setGlobalDistrict,
     mode,
+    city,
+    lat: userLat,
+    lon: userLon,
     setMode
   } = useGlobalLocation();
 
@@ -62,7 +65,10 @@ const NDVIAnalysis = () => {
 
   const activeDistrict = globalDistrict || stateDistrictsMap[localState]?.[0] || "Visakhapatnam";
 
-  const { data: envData, setDistrict } = useLiveWeather(activeDistrict);
+  const { data: envData, setDistrict } = useLiveWeather(
+    activeDistrict, 
+    mode === "current" && userLat && userLon ? { lat: userLat, lon: userLon, state: "" } : undefined
+  );
 
   const handleStateChange = (newState: string) => {
     setLocalState(newState);
@@ -160,7 +166,7 @@ const NDVIAnalysis = () => {
             <div className="flex items-center gap-2 mb-6">
               <div className={`w-2 h-2 rounded-full ${cfg.bar} animate-pulse shadow-lg`} />
               <span className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-widest">
-                {mode === "current" ? "Live Location" : "District Intel"} · {activeDistrict}
+                {mode === "current" ? "Live Location" : "District Intel"} · {mode === "current" ? city : activeDistrict}
               </span>
             </div>
 

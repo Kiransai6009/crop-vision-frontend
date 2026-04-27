@@ -8,7 +8,7 @@ export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { user, profile } = useUser();
-  const { locationName, loading } = useGlobalLocation();
+  const { city, loading } = useGlobalLocation();
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
@@ -43,7 +43,7 @@ export const Header = () => {
           >
             <MapPin className={`w-3.5 h-3.5 text-blue-500 ${loading ? 'animate-pulse' : ''}`} />
             <span className="text-[10px] font-black text-blue-500 uppercase tracking-wider truncate max-w-[200px]">
-              {locationName}
+              {loading ? "Detecting..." : city}
             </span>
           </div>
 
