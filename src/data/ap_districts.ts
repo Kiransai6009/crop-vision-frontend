@@ -70,6 +70,16 @@ export const apDistrictsGeoJSON = {
           [79.8, 14.3], [80.1, 14.3], [80.1, 14.7], [79.8, 14.7], [79.8, 14.3]
         ]]
       }
+    },
+    {
+      "type": "Feature",
+      "properties": { "district": "Krishna (Machilipatnam)", "state": "Andhra Pradesh" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [80.8, 16.0], [81.3, 16.0], [81.3, 16.3], [80.8, 16.3], [80.8, 16.0]
+        ]]
+      }
     }
   ]
 };

@@ -26,6 +26,7 @@ export const DISTRICT_COORDS: Record<string, { lat: number; lon: number; state: 
     "Anantapur": { lat: 14.7, lon: 77.6, state: "Andhra Pradesh" },
     "Nellore": { lat: 14.4, lon: 80.0, state: "Andhra Pradesh" },
     "Chittoor": { lat: 13.2, lon: 79.1, state: "Andhra Pradesh" },
+    "Krishna (Machilipatnam)": { lat: 16.18, lon: 81.13, state: "Andhra Pradesh" },
     // Telangana
     "Hyderabad": { lat: 17.4, lon: 78.5, state: "Telangana" },
     "Karimnagar": { lat: 18.4, lon: 79.1, state: "Telangana" },
